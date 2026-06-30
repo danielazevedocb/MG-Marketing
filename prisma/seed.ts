@@ -11,8 +11,8 @@ import { PrismaClient } from "../src/generated/prisma/client";
 type SeedClient = Pick<PrismaClient, "user" | "group" | "tag" | "template">;
 
 // Email do administrador inicial (sobrescrevível por env em ambientes reais).
-const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "admin@mgmarketing.local";
-const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? "Administrador MG";
+const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "admin@teste.com";
+const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? "AdministradorMG";
 
 const SAMPLE_GROUPS = [
   { nome: "Clientes", descricao: "Contatos de clientes ativos" },
