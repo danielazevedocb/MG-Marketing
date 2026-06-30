@@ -1,0 +1,42 @@
+---
+description: Regras para projetos mobile com Expo e React Native
+globs:
+  - "app/**/*.ts"
+  - "app/**/*.tsx"
+  - "**/*.native.ts"
+  - "**/*.native.tsx"
+  - "src/**/*.ts"
+  - "src/**/*.tsx"
+  - "assets/**/*"
+  - "app.json"
+  - "app.config.*"
+  - "eas.json"
+  - "expo-env.d.ts"
+  - "globals.css"
+alwaysApply: false
+---
+
+- Para padrões detalhados de arquitetura, stack e exemplos, carregar a skill em `.claude/skills/expo-best-practices`.
+- **Stack de referência** (quando o projeto já adota): Expo Router, TypeScript estrito, TanStack Query v5, NativeWind v4; estado local com `useState` / `useReducer` / Context.
+- **Preserve a estrutura atual** do repositório antes de criar novas pastas ou padrões.
+- **`app/`** — apenas rotas; importam de `src/`, sem lógica de negócio nem HTTP direto.
+- Organização de **`src/`** — ver `02-expo-src-structure.md` (e skill `expo-best-practices`).
+- Componentes pequenos, reutilizáveis e com responsabilidade única; regras de negócio em hooks/helpers da feature, não em componentes visuais.
+- Use Expo Router quando o projeto já estiver com rotas em `app/`.
+- Sempre trate `loading`, `error`, `empty` e `success` em telas com dados assíncronos.
+- Chamadas HTTP em `src/features/*/api.ts` ou client central em `src/lib/` — não espalhar fetch em telas.
+- Trate falhas de rede, timeout, ausência de internet e respostas inesperadas.
+- Tipagem clara para params de rota, payloads, respostas de API, props e estados; evite `any` (Zod para dados externos quando aplicável).
+- Formulários: validar entradas e mensagens de erro claras (RHF + Zod só se o projeto já usar).
+- UX mobile: telas pequenas, teclado, áreas seguras, densidades — `SafeAreaView`, `KeyboardAvoidingView`, `ScrollView` ou `FlatList` conforme o caso.
+- `FlatList` para listas grandes; otimização conforme a skill (`keyExtractor`, `useCallback` em `renderItem`, `getItemLayout` quando altura fixa).
+- `useMemo`, `useCallback` e `React.memo` só com ganho real de performance.
+- Estilos com NativeWind quando o projeto usa; variantes com classes completas em build time (sem `bg-${color}-500`).
+- Imagens remotas: preferir `expo-image` em vez de `<Image>` do RN.
+- Tokens/constantes em `src/constants/`; evitar valores mágicos repetidos.
+- Acessibilidade: labels, área de toque, contraste e feedback visual.
+- Permissões nativas (câmera, localização, etc.) só quando necessário; compatibilidade Expo Go / Dev Build / EAS.
+- Não adicionar libs nativas sem avaliar impacto em EAS, config plugins e SDK.
+- Secrets nunca no bundle; env público só para dados seguros no client; sessão com SecureStore quando fizer sentido.
+- Navegação previsível; ações destrutivas com confirmação.
+- Antes de propor APIs do Expo/RN, consulte documentação via Context7 (conforme `01-geral.md`).

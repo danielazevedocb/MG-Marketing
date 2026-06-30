@@ -1,0 +1,39 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "../styles/theme.css";
+
+/* Habilita o tema escuro baseado na classe `.dark` aplicada pelo Next Themes. */
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  :focus-visible {
+    @apply outline-ring outline-2 outline-offset-2;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  [role="menuitem"]:focus-visible,
+  [cmdk-item][data-selected="true"] {
+    @apply outline-ring outline-2 outline-offset-2;
+  }
+
+  /* Respeita a preferência de redução de movimento do sistema operacional. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

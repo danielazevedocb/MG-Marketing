@@ -1,0 +1,373 @@
+// Schema Prisma do MG Marketing.
+// Banco: Supabase PostgreSQL (apenas o banco), acessado exclusivamente via Prisma.
+// Sistema single-org (sem multi-tenancy). Convenções: relações com ambos os lados,
+// timestamps em todos os modelos persistentes, índices em campos de busca e constraints @unique.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // As URLs (DATABASE_URL/DIRECT_URL) são configuradas em `prisma.config.ts` (Prisma v7).
+}
+
+// =============================================================================
+// Enums
+// =============================================================================
+
+/// Perfis de acesso (RBAC) — configurados de fato na change `auth-rbac`.
+enum Role {
+  Administrador
+  Marketing
+  Comercial
+  Visualizador
+}
+
+/// Situação de um contato na base.
+enum ContactStatus {
+  Ativo
+  Inativo
+}
+
+/// Tipo de template/conteúdo.
+enum TemplateType {
+  Novidade
+  Promocao
+  Produto
+  Geral
+}
+
+/// Tipo de campanha (espelha as categorias de conteúdo).
+enum CampaignType {
+  Novidade
+  Promocao
+  Produto
+  Geral
+}
+
+/// Ciclo de vida da campanha.
+enum CampaignStatus {
+  draft
+  scheduled
+  sent
+}
+
+/// Canal de envio suportado.
+enum Channel {
+  WhatsApp
+  Email
+}
+
+/// Resultado de um envio registrado no histórico.
+enum SendStatus {
+  Pendente
+  Enviado
+  Falha
+}
+
+/// Provedores de email suportados (configurados na change `email-config`).
+enum ProviderType {
+  SMTP
+  Resend
+  SendGrid
+  SES
+  Mailgun
+  Postmark
+}
+
+/// Categoria de arquivo armazenado no Cloudflare R2 (banco guarda só URL + metadados).
+enum FileAssetType {
+  banner
+  logo
+  imagem
+  catalogo
+  pdf
+  arquivo
+}
+
+// =============================================================================
+// Autenticação e usuários (compatível com Prisma Adapter do Auth.js)
+// =============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(Visualizador)
+  /// Hash da senha (bcrypt) para login por credenciais — adicionado na change `auth-rbac`.
+  /// Nunca é exposto ao cliente; usado apenas na verificação de credenciais no servidor.
+  passwordHash  String?
+
+  accounts      Account[]
+  sessions      Session[]
+  templates     Template[]
+  campaigns     Campaign[]
+  sendHistories SendHistory[]
+  auditLogs     AuditLog[]
+  fileAssets    FileAsset[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// =============================================================================
+// Contatos, grupos e tags
+// =============================================================================
+
+model Contact {
+  id       String        @id @default(cuid())
+  nome     String?
+  empresa  String
+  telefone String?
+  email    String?
+  status   ContactStatus @default(Ativo)
+
+  groups Group[] @relation("ContactGroups")
+  tags   Tag[]   @relation("ContactTags")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([telefone])
+  @@index([status])
+  @@index([empresa])
+}
+
+model Group {
+  id        String  @id @default(cuid())
+  nome      String  @unique
+  descricao String?
+
+  contacts Contact[] @relation("ContactGroups")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Tag {
+  id   String  @id @default(cuid())
+  nome String  @unique
+  cor  String?
+
+  contacts Contact[] @relation("ContactTags")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// =============================================================================
+// Templates e campanhas
+// =============================================================================
+
+model Template {
+  id        String       @id @default(cuid())
+  nome      String
+  type      TemplateType @default(Geral)
+  category  String?
+  conteudo  String?
+  favorite  Boolean      @default(false)
+  authorId  String?
+
+  author    User?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  campaigns Campaign[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([category])
+  @@index([favorite])
+  @@index([authorId])
+}
+
+model Campaign {
+  id          String         @id @default(cuid())
+  nome        String
+  type        CampaignType   @default(Geral)
+  status      CampaignStatus @default(draft)
+  channel     Channel?
+  /// Canais selecionados no wizard (WhatsApp, Email ou ambos).
+  channels    Channel[]      @default([])
+  templateId  String?
+  creatorId   String?
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  /// Etapa atual do wizard para retomada de rascunho.
+  wizardStep  String?
+  /// IDs de contatos selecionados diretamente como destinatários.
+  recipientContactIds String[] @default([])
+  /// IDs de grupos selecionados (contatos expandidos no envio).
+  recipientGroupIds   String[] @default([])
+
+  template      Template?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  creator       User?          @relation(fields: [creatorId], references: [id], onDelete: SetNull)
+  field         CampaignField?
+  sendHistories SendHistory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([status, scheduledAt])
+  @@index([scheduledAt])
+  @@index([type])
+  @@index([templateId])
+  @@index([creatorId])
+}
+
+model CampaignField {
+  id          String    @id @default(cuid())
+  campaignId  String    @unique
+  titulo      String?
+  subtitulo   String?
+  texto       String?
+  banner      String?
+  imagem      String?
+  link        String?
+  botao       String?
+  preco       String?
+  desconto    String?
+  validade    DateTime?
+  observacoes String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// =============================================================================
+// Provedores de email, histórico, auditoria e arquivos
+// =============================================================================
+
+model EmailProvider {
+  id        String       @id @default(cuid())
+  name      String?
+  provider  ProviderType
+  active    Boolean      @default(false)
+  fromName  String?
+  fromEmail String?
+  /// Credenciais (SMTP/API) armazenadas SEMPRE criptografadas — nunca em texto puro.
+  /// A criptografia/descriptografia é tratada na change `email-config`.
+  credentialsEncrypted String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+  @@index([provider])
+}
+
+model SendHistory {
+  id            String     @id @default(cuid())
+  campaignId    String?
+  userId        String?
+  channel       Channel
+  recipient     String
+  status        SendStatus @default(Pendente)
+  returnMessage String?
+  sentAt        DateTime   @default(now())
+
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId])
+  @@index([userId])
+  @@index([channel])
+  @@index([status])
+  @@index([sentAt])
+}
+
+model AuditLog {
+  id       String  @id @default(cuid())
+  actorId  String?
+  action   String
+  entity   String
+  entityId String?
+  payload  Json?
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([actorId])
+  @@index([entity])
+  @@index([action])
+  @@index([entityId])
+}
+
+model FileAsset {
+  id           String        @id @default(cuid())
+  url          String
+  type         FileAssetType
+  filename     String?
+  mimeType     String?
+  size         Int?
+  width        Int?
+  height       Int?
+  uploadedById String?
+
+  uploadedBy User? @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([uploadedById])
+}

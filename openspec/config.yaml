@@ -1,0 +1,72 @@
+schema: spec-driven
+
+# Contexto do projeto (mostrado à IA ao criar artefatos)
+context: |
+  PROJETO: MG Marketing — aplicação web interna e moderna do ecossistema da empresa MG,
+  usada pelos times Comercial e Marketing para criar, gerenciar, agendar e enviar campanhas
+  de comunicação de forma rápida e padronizada.
+
+  IMPORTANTE: NÃO é um SaaS multi-tenant. É um sistema interno de uma única organização (single-org).
+  Ignore padrões de multi-tenancy (tenantId, planos, billing, onboarding de tenant). O controle de
+  acesso é feito por RBAC com 4 perfis internos.
+
+  OBJETIVOS: criar campanhas em minutos; templates inteligentes; gestão de contatos; organização por
+  grupos/tags; importação de contatos do ERP MG (abstração para o futuro); gestão de imagens/anexos;
+  previews em tempo real (WhatsApp + Email); envio via WhatsApp (wa.me) e Email; agendamento; rascunhos;
+  duplicação de campanhas/templates; histórico completo de envios; logs de auditoria; configurações.
+  UI inspirada em Linear, Vercel, Stripe e Notion — moderna, intuitiva, rápida e responsiva.
+
+  STACK (OBRIGATÓRIA):
+  - Frontend: Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, Magic UI,
+    Framer Motion, Lucide React, React Hook Form, Zod, TanStack Query, Next Themes.
+  - Backend: Next.js App Router, Server Components, Server Actions, Route Handlers, Prisma ORM.
+  - Banco: Supabase PostgreSQL (apenas o banco) via Prisma (migrations, seeds, índices, relações, constraints).
+  - Storage de arquivos: Cloudflare R2 (banner, logo, imagens, catálogos, PDFs). O banco guarda apenas
+    URLs públicas + metadados.
+  - Auth: Auth.js + Prisma Adapter; perfis Administrador / Marketing / Comercial / Visualizador; RBAC
+    protegendo todas as rotas/recursos (no servidor — fonte da verdade).
+
+  ARQUITETURA: limpa, modular e escalável; SOLID, Clean Architecture, Clean Code, DRY, KISS.
+  Estrutura de pastas (exata):
+    src/app, src/actions, src/components/{ui,layout,dashboard,marketing,forms},
+    src/features/{campaigns,templates,contacts,history,settings}, src/hooks, src/lib, prisma,
+    src/repositories, src/schemas, src/services, src/styles, src/types, src/utils.
+  Camadas: actions (Server Actions) → services (regras de negócio) → repositories (acesso a dados via Prisma).
+  schemas (Zod) validam toda entrada; types compartilham contratos tipados.
+
+  SEGURANÇA: validação com Zod no servidor; sanitização; controle de permissão (RBAC) no servidor;
+  middleware de autenticação; proteção de rotas e Server Actions; criptografia das credenciais de
+  provedores de email; logs de auditoria. Segredos só no servidor (nunca NEXT_PUBLIC_*).
+
+  QUALIDADE: TypeScript fortemente tipado (sem any); componentes/hooks reutilizáveis; services, repositories,
+  actions e schemas bem separados; ESLint + Prettier.
+
+  EXTENSIBILIDADE FUTURA: ERP MG, WhatsApp Business API, geração de conteúdo por IA, novos canais,
+  relatórios gerenciais. Manter modular/escalável/manutenível.
+
+  MAGIC UI (onde agregar valor, respeitando prefers-reduced-motion e performance): Magic Card, Border Beam,
+  Animated List, Number Ticker, Blur Fade, Shine Border, Aurora Text, Ripple, Sparkles, Animated Gradient.
+  Tema: light + dark (Next Themes).
+
+  ORDEM DE DESENVOLVIMENTO (dependências entre changes):
+  1. project-foundation → 2. database-schema → 3. auth-rbac → 4. file-storage → 5. contacts →
+  6. templates → 7. campaigns → 8. preview → 9. email-config → 10. sending → 11. scheduling →
+  12. history-logs → 13. dashboard → 14. ui-extras.
+
+  IDIOMA: todo o conteúdo dos artefatos deve ser escrito em português (pt-BR).
+
+# Regras por artefato
+rules:
+  proposal:
+    - Escreva em português (pt-BR).
+    - Inclua claramente "o quê" e "por quê", além de escopo e não-objetivos do módulo.
+    - Declare explicitamente as dependências de outras changes (ordem de desenvolvimento).
+  design:
+    - Escreva em português (pt-BR).
+    - Documente arquitetura, modelo de dados tocado, camadas (actions/services/repositories), decisões-chave.
+    - Justifique aderência a SOLID, Clean Architecture, DRY e KISS.
+    - Liste as changes das quais este módulo depende e por quê.
+  tasks:
+    - Escreva em português (pt-BR).
+    - Liste passos de implementação ordenados.
+    - SEMPRE inclua uma seção dedicada de testes com tarefas explícitas de teste para o módulo.

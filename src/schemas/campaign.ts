@@ -1,0 +1,266 @@
+// Schemas Zod de campanhas — wizard, conteúdo e validação compartilhada.
+import { z } from "zod";
+
+import {
+  CampaignStatus,
+  CampaignType,
+  Channel,
+} from "@/generated/prisma/enums";
+import { normalizeOptionalString } from "@/schemas/contact";
+
+const optionalUrl = z
+  .string()
+  .trim()
+  .url("URL inválida")
+  .optional()
+  .or(z.literal(""));
+
+function optionalShortText(max: number, label: string) {
+  return z
+    .string()
+    .trim()
+    .max(max, `${label} muito longo`)
+    .optional()
+    .or(z.literal(""));
+}
+
+/// Valor monetário ou percentual (formato livre, mas deve ser numérico válido).
+const optionalNumericField = z
+  .string()
+  .trim()
+  .optional()
+  .or(z.literal(""))
+  .refine(
+    (value) => {
+      if (!value) return true;
+      const normalized = value.replace(/\./g, "").replace(",", ".");
+      return !Number.isNaN(Number(normalized)) && Number(normalized) >= 0;
+    },
+    { message: "Informe um valor numérico válido" },
+  );
+
+export const WIZARD_STEPS = [
+  "criar",
+  "tipo",
+  "template",
+  "conteudo",
+  "imagem",
+  "contatos",
+  "grupos",
+  "canal",
+  "preview",
+  "enviar",
+] as const;
+
+export type WizardStep = (typeof WIZARD_STEPS)[number];
+
+export const campaignTypeSchema = z.nativeEnum(CampaignType);
+export const campaignStatusSchema = z.nativeEnum(CampaignStatus);
+export const channelSchema = z.nativeEnum(Channel);
+
+export const campaignFieldSchema = z.object({
+  titulo: z
+    .string()
+    .trim()
+    .min(1, "Título é obrigatório")
+    .max(200, "Título muito longo"),
+  subtitulo: optionalShortText(300, "Subtítulo"),
+  texto: z
+    .string()
+    .trim()
+    .min(1, "Texto é obrigatório")
+    .max(5000, "Texto muito longo"),
+  banner: optionalUrl,
+  imagem: optionalUrl,
+  link: optionalUrl,
+  botao: optionalShortText(80, "Texto do botão"),
+  preco: optionalNumericField,
+  desconto: optionalNumericField,
+  validade: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(""))
+    .refine(
+      (value) => {
+        if (!value) return true;
+        const date = new Date(value);
+        return !Number.isNaN(date.getTime());
+      },
+      { message: "Data de validade inválida" },
+    ),
+  observacoes: optionalShortText(2000, "Observações"),
+});
+
+export type CampaignFieldInput = z.infer<typeof campaignFieldSchema>;
+
+export const campaignWizardStateSchema = z.object({
+  nome: z
+    .string()
+    .trim()
+    .min(1, "Nome da campanha é obrigatório")
+    .max(120, "Nome muito longo"),
+  type: campaignTypeSchema,
+  templateId: z.string().cuid().optional().or(z.literal("")),
+  field: campaignFieldSchema,
+  recipientContactIds: z.array(z.string().cuid()),
+  recipientGroupIds: z.array(z.string().cuid()),
+  channels: z.array(channelSchema),
+  wizardStep: z.enum(WIZARD_STEPS),
+  scheduledAt: z.string().datetime().optional().or(z.literal("")),
+});
+
+export type CampaignWizardStateInput = z.infer<typeof campaignWizardStateSchema>;
+
+export const campaignCreateStepSchema = z.object({
+  nome: campaignWizardStateSchema.shape.nome,
+});
+
+export const campaignTypeStepSchema = z.object({
+  type: campaignTypeSchema,
+});
+
+export const campaignTemplateStepSchema = z.object({
+  templateId: z.string().cuid("Selecione um template"),
+});
+
+export const campaignContentStepSchema = z.object({
+  field: campaignFieldSchema,
+});
+
+export const campaignImageStepSchema = z.object({
+  field: campaignFieldSchema.pick({ banner: true, imagem: true }),
+});
+
+export const campaignContactsStepSchema = z.object({
+  recipientContactIds: z.array(z.string().cuid()),
+});
+
+export const campaignGroupsStepSchema = z.object({
+  recipientGroupIds: z.array(z.string().cuid()),
+  recipientContactIds: z.array(z.string().cuid()),
+}).refine(
+  (data) =>
+    data.recipientContactIds.length > 0 || data.recipientGroupIds.length > 0,
+  {
+    message: "Selecione ao menos um contato ou grupo",
+    path: ["recipientGroupIds"],
+  },
+);
+
+export const campaignChannelStepSchema = z.object({
+  channels: z.array(channelSchema).min(1, "Selecione ao menos um canal"),
+});
+
+export const campaignScheduleStepSchema = z.object({
+  scheduledAt: z
+    .string()
+    .datetime({ message: "Data de agendamento inválida" })
+    .optional()
+    .or(z.literal("")),
+});
+
+/** Valida data/hora de agendamento futura (entrada em ISO UTC). */
+export function parseFutureScheduledAt(
+  scheduledAtIso: string,
+): { success: true; date: Date } | { success: false; error: string } {
+  const scheduledAt = new Date(scheduledAtIso);
+  if (Number.isNaN(scheduledAt.getTime())) {
+    return { success: false, error: "Data de agendamento inválida" };
+  }
+
+  if (scheduledAt.getTime() <= Date.now()) {
+    return {
+      success: false,
+      error: "A data de agendamento deve ser no futuro",
+    };
+  }
+
+  return { success: true, date: scheduledAt };
+}
+
+export const campaignListFiltersSchema = z.object({
+  search: z.string().trim().max(200).optional(),
+  status: campaignStatusSchema.optional(),
+  type: campaignTypeSchema.optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export type CampaignListFiltersInput = z.infer<typeof campaignListFiltersSchema>;
+
+export const CAMPAIGN_TYPE_LABELS: Record<CampaignType, string> = {
+  [CampaignType.Novidade]: "Novidade",
+  [CampaignType.Promocao]: "Promoção",
+  [CampaignType.Produto]: "Produto",
+  [CampaignType.Geral]: "Geral",
+};
+
+export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
+  [CampaignStatus.draft]: "Rascunho",
+  [CampaignStatus.scheduled]: "Agendada",
+  [CampaignStatus.sent]: "Enviada",
+};
+
+export const CHANNEL_LABELS: Record<Channel, string> = {
+  [Channel.WhatsApp]: "WhatsApp",
+  [Channel.Email]: "Email",
+};
+
+const STEP_SCHEMAS: Record<WizardStep, z.ZodType> = {
+  criar: campaignCreateStepSchema,
+  tipo: campaignTypeStepSchema,
+  template: campaignTemplateStepSchema,
+  conteudo: campaignContentStepSchema,
+  imagem: campaignImageStepSchema,
+  contatos: campaignContactsStepSchema,
+  grupos: campaignGroupsStepSchema,
+  canal: campaignChannelStepSchema,
+  preview: z.object({}),
+  enviar: campaignScheduleStepSchema,
+};
+
+export function getNextWizardStep(step: WizardStep): WizardStep | null {
+  const index = WIZARD_STEPS.indexOf(step);
+  if (index < 0 || index >= WIZARD_STEPS.length - 1) return null;
+  return WIZARD_STEPS[index + 1]!;
+}
+
+export function getPreviousWizardStep(step: WizardStep): WizardStep | null {
+  const index = WIZARD_STEPS.indexOf(step);
+  if (index <= 0) return null;
+  return WIZARD_STEPS[index - 1]!;
+}
+
+export function validateWizardStep(
+  step: WizardStep,
+  data: Record<string, unknown>,
+): { success: true; data: unknown } | { success: false; error: string } {
+  const schema = STEP_SCHEMAS[step];
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error.issues[0]?.message ?? "Dados inválidos",
+    };
+  }
+  return { success: true, data: result.data };
+}
+
+export { normalizeOptionalString };
+
+export function emptyFieldInput(): CampaignFieldInput {
+  return {
+    titulo: "",
+    subtitulo: "",
+    texto: "",
+    banner: "",
+    imagem: "",
+    link: "",
+    botao: "",
+    preco: "",
+    desconto: "",
+    validade: "",
+    observacoes: "",
+  };
+}
