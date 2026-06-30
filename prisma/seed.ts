@@ -4,6 +4,7 @@
 //
 // Execução: `npx prisma db seed` (configurado em `prisma.config.ts` → `tsx prisma/seed.ts`).
 import { PrismaPg } from "@prisma/adapter-pg";
+import bcrypt from "bcryptjs";
 
 import { PrismaClient } from "../src/generated/prisma/client";
 
@@ -12,7 +13,11 @@ type SeedClient = Pick<PrismaClient, "user" | "group" | "tag" | "template">;
 
 // Email do administrador inicial (sobrescrevível por env em ambientes reais).
 const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "admin@teste.com";
-const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? "AdministradorMG";
+const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? "Administrador MG";
+// Senha inicial do admin (dev: default abaixo; produção: defina SEED_ADMIN_PASSWORD no env).
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "Admin@123";
+/// Mesmo fator de custo usado em bcryptjs (padrão da lib para novos hashes).
+const BCRYPT_ROUNDS = 10;
 
 const SAMPLE_GROUPS = [
   { nome: "Clientes", descricao: "Contatos de clientes ativos" },
@@ -31,11 +36,18 @@ const SAMPLE_TAGS = [
  * Recebe o cliente por injeção para permitir testes (mock) sem acoplar à instância real.
  */
 export async function seed(prisma: SeedClient): Promise<void> {
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, BCRYPT_ROUNDS);
+
   // Usuário Administrador (idempotente por email único).
   await prisma.user.upsert({
     where: { email: ADMIN_EMAIL },
-    update: { name: ADMIN_NAME, role: "Administrador" },
-    create: { email: ADMIN_EMAIL, name: ADMIN_NAME, role: "Administrador" },
+    update: { name: ADMIN_NAME, role: "Administrador", passwordHash },
+    create: {
+      email: ADMIN_EMAIL,
+      name: ADMIN_NAME,
+      role: "Administrador",
+      passwordHash,
+    },
   });
 
   // Grupos de exemplo (idempotentes por `nome` único).
