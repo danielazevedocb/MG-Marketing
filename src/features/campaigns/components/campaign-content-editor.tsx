@@ -178,17 +178,18 @@ export function CampaignImageEditor({ disabled = false }: CampaignImageEditorPro
   const form = useFormContext<CampaignWizardStateInput>();
 
   return (
-    <div className="grid gap-6 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <FormField
         control={form.control}
         name="field.banner"
         render={({ field }) => (
-          <FormItem>
+          <FormItem className="min-w-0">
             <FormLabel>Banner</FormLabel>
             <FormControl>
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 <FileDropzone
                   assetType={FileAssetType.banner}
+                  className="w-full min-w-0"
                   disabled={disabled}
                   label="Arraste o banner ou clique para enviar"
                   onUploadComplete={(asset) => field.onChange(asset.url)}
@@ -210,12 +211,13 @@ export function CampaignImageEditor({ disabled = false }: CampaignImageEditorPro
         control={form.control}
         name="field.imagem"
         render={({ field }) => (
-          <FormItem>
+          <FormItem className="min-w-0">
             <FormLabel>Imagem</FormLabel>
             <FormControl>
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 <FileDropzone
                   assetType={FileAssetType.imagem}
+                  className="w-full min-w-0"
                   disabled={disabled}
                   label="Arraste a imagem ou clique para enviar"
                   onUploadComplete={(asset) => field.onChange(asset.url)}

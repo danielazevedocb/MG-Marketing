@@ -1,6 +1,7 @@
 "use server";
 
 // Server Actions do módulo de campanhas — protegidas por RBAC no servidor.
+import { z } from "zod";
 import {
   ForbiddenError,
   UnauthorizedError,
@@ -10,6 +11,7 @@ import { NoActiveEmailProviderError, SendingError } from "@/lib/sending-errors";
 import {
   campaignListFiltersSchema,
   campaignWizardStateSchema,
+  formatZodValidationError,
   type CampaignListFiltersInput,
   type CampaignWizardStateInput,
   type WizardStep,
@@ -48,6 +50,9 @@ function mapActionError(error: unknown): ActionError {
   }
   if (error instanceof SendingError) {
     return { success: false, error: error.message };
+  }
+  if (error instanceof z.ZodError) {
+    return { success: false, error: formatZodValidationError(error) };
   }
   return { success: false, error: "Não foi possível concluir a operação." };
 }
@@ -98,8 +103,11 @@ export async function saveCampaignDraftAction(
 ): Promise<CampaignActionResult<CampaignDto>> {
   try {
     const user = await requirePermission("campaigns:write");
-    const parsed = campaignWizardStateSchema.parse(state);
-    const data = await getCampaignService().saveDraft(id, parsed, user.id);
+    const parsed = campaignWizardStateSchema.safeParse(state);
+    if (!parsed.success) {
+      return { success: false, error: formatZodValidationError(parsed.error) };
+    }
+    const data = await getCampaignService().saveDraft(id, parsed.data, user.id);
     return { success: true, data };
   } catch (error) {
     return mapActionError(error);

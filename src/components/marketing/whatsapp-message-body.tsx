@@ -116,7 +116,7 @@ export function WhatsAppMessageBody({
         return (
           <p
             key={`${lineIndex}-${line}`}
-            className={lineIndex > 0 ? "mt-1" : undefined}
+            className={lineIndex > 0 ? "mt-1 break-words" : "break-words"}
           >
             {segments.map((segment, segmentIndex) =>
               renderSegment(segment, `${lineIndex}-${segmentIndex}`),

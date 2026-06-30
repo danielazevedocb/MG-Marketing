@@ -35,30 +35,36 @@ export function TemplatePreview({ type, content, className }: TemplatePreviewPro
         </div>
       ) : null}
 
-      <div className="space-y-4 p-5">
+      <div className="min-w-0 space-y-4 p-5">
         <div className="flex items-center gap-2">
           <Badge variant="secondary">{model.typeLabel}</Badge>
         </div>
 
         <div className="space-y-2">
-          <h3 className="text-xl font-semibold tracking-tight">{model.titulo}</h3>
+          <h3 className="break-words text-xl font-semibold tracking-tight">
+            {model.titulo}
+          </h3>
           {model.subtitulo ? (
-            <p className="text-muted-foreground text-sm">{model.subtitulo}</p>
+            <p className="text-muted-foreground break-words text-sm">{model.subtitulo}</p>
           ) : null}
         </div>
 
         {model.sections.length > 0 ? (
-          <dl className="grid gap-2 rounded-lg border p-3 text-sm">
+          <dl className="grid min-w-0 gap-2 rounded-lg border p-3 text-sm">
             {model.sections.map((section) => (
-              <div key={section.label} className="flex justify-between gap-3">
-                <dt className="text-muted-foreground">{section.label}</dt>
-                <dd className="text-right font-medium">{section.value}</dd>
+              <div key={section.label} className="flex min-w-0 justify-between gap-3">
+                <dt className="text-muted-foreground shrink-0">{section.label}</dt>
+                <dd className="min-w-0 break-words text-right font-medium">
+                  {section.value}
+                </dd>
               </div>
             ))}
           </dl>
         ) : null}
 
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">{model.corpo}</p>
+        <p className="break-words text-sm leading-relaxed whitespace-pre-wrap">
+          {model.corpo}
+        </p>
 
         {model.ctaTexto ? (
           <Button type="button" size="sm" className="pointer-events-none">

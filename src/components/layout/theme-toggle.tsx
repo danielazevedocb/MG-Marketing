@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 /**
  * Botão para alternar entre os temas claro e escuro.
- * Evita mismatch de hidratação renderizando o ícone apenas após a montagem.
+ * Evita mismatch de hidratação mantendo ícone e aria-label estáveis até a montagem.
  */
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -18,7 +18,7 @@ export function ThemeToggle() {
     setMounted(true);
   }, []);
 
-  const isDark = resolvedTheme === "dark";
+  const isDark = mounted && resolvedTheme === "dark";
 
   return (
     <Button
@@ -27,11 +27,7 @@ export function ThemeToggle() {
       aria-label={isDark ? "Ativar tema claro" : "Ativar tema escuro"}
       onClick={() => setTheme(isDark ? "light" : "dark")}
     >
-      {mounted && isDark ? (
-        <Sun className="size-4" />
-      ) : (
-        <Moon className="size-4" />
-      )}
+      {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
     </Button>
   );
 }

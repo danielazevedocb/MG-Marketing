@@ -2,6 +2,7 @@
 import { z } from "zod";
 
 import { ContactStatus } from "@/generated/prisma/enums";
+import { entityIdArraySchema, entityIdSchema } from "@/schemas/id";
 
 const telefoneSchema = z
   .string()
@@ -39,8 +40,8 @@ export const contactFormSchema = z.object({
   telefone: telefoneSchema,
   email: emailSchema,
   status: contactStatusSchema,
-  groupIds: z.array(z.string().cuid()),
-  tagIds: z.array(z.string().cuid()),
+  groupIds: entityIdArraySchema("Grupo"),
+  tagIds: entityIdArraySchema("Tag"),
 });
 
 export type ContactFormInput = z.infer<typeof contactFormSchema>;
@@ -48,8 +49,8 @@ export type ContactFormInput = z.infer<typeof contactFormSchema>;
 export const contactListFiltersSchema = z.object({
   search: z.string().trim().max(200).optional(),
   status: contactStatusSchema.optional(),
-  groupId: z.string().cuid().optional(),
-  tagId: z.string().cuid().optional(),
+  groupId: entityIdSchema("Grupo").optional(),
+  tagId: entityIdSchema("Tag").optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });

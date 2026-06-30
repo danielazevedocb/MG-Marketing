@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { CampaignType, Channel } from "@/generated/prisma/enums";
 import {
   campaignFieldSchema,
+  campaignWizardStateSchema,
   getNextWizardStep,
   getPreviousWizardStep,
   validateWizardStep,
@@ -33,6 +34,52 @@ describe("validateWizardStep", () => {
       recipientGroupIds: [],
     });
     expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Selecione ao menos um contato ou grupo");
+    }
+  });
+
+  it("etapa grupos aceita grupo sem contatos (rascunho)", () => {
+    const result = validateWizardStep("grupos", {
+      recipientGroupIds: ["seed_group_001"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("etapa grupos aceita IDs legados de seed", () => {
+    const result = validateWizardStep("grupos", {
+      recipientGroupIds: ["seed_group_001", "seed_group_002", "seed_group_003"],
+      recipientContactIds: [],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("etapa grupos tolera recipientContactIds ausente", () => {
+    const result = validateWizardStep("grupos", {
+      recipientGroupIds: ["seed_group_001"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("etapa grupos rejeita ID vazio", () => {
+    const result = validateWizardStep("grupos", {
+      recipientGroupIds: [""],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Grupo inválido");
+    }
+  });
+
+  it("formata erro genérico do Zod em português", () => {
+    const result = validateWizardStep("grupos", {
+      recipientGroupIds: "invalido",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).not.toBe("Invalid input");
+      expect(result.error.length).toBeGreaterThan(10);
+    }
   });
 
   it("transições de etapa seguem ordem do wizard", () => {
@@ -75,6 +122,37 @@ describe("campaignFieldSchema", () => {
       desconto: "xyz",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("campaignWizardStateSchema", () => {
+  const draftState = {
+    nome: "Campanha teste",
+    type: CampaignType.Geral,
+    templateId: "",
+    field: {
+      titulo: "",
+      subtitulo: "",
+      texto: "",
+      banner: "",
+      imagem: "",
+      link: "",
+      botao: "",
+      preco: "",
+      desconto: "",
+      validade: "",
+      observacoes: "",
+    },
+    recipientContactIds: [] as string[],
+    recipientGroupIds: [] as string[],
+    channels: [] as Channel[],
+    wizardStep: "criar" as const,
+    scheduledAt: "",
+  };
+
+  it("aceita rascunho com conteúdo vazio nas etapas iniciais", () => {
+    const result = campaignWizardStateSchema.safeParse(draftState);
+    expect(result.success).toBe(true);
   });
 });
 

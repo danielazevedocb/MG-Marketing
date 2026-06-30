@@ -1,5 +1,5 @@
 // Schemas Zod de campanhas — wizard, conteúdo e validação compartilhada.
-import { z } from "zod";
+import { z, type ZodError } from "zod";
 
 import {
   CampaignStatus,
@@ -7,6 +7,7 @@ import {
   Channel,
 } from "@/generated/prisma/enums";
 import { normalizeOptionalString } from "@/schemas/contact";
+import { entityIdArraySchema } from "@/schemas/id";
 
 const optionalUrl = z
   .string()
@@ -94,6 +95,19 @@ export const campaignFieldSchema = z.object({
 
 export type CampaignFieldInput = z.infer<typeof campaignFieldSchema>;
 
+/** Conteúdo parcial permitido enquanto o wizard ainda não passou pela etapa de conteúdo. */
+export const campaignFieldDraftSchema = campaignFieldSchema.extend({
+  titulo: optionalShortText(200, "Título"),
+  texto: z
+    .string()
+    .trim()
+    .max(5000, "Texto muito longo")
+    .optional()
+    .or(z.literal("")),
+});
+
+export type CampaignFieldDraftInput = z.infer<typeof campaignFieldDraftSchema>;
+
 export const campaignWizardStateSchema = z.object({
   nome: z
     .string()
@@ -102,9 +116,9 @@ export const campaignWizardStateSchema = z.object({
     .max(120, "Nome muito longo"),
   type: campaignTypeSchema,
   templateId: z.string().cuid().optional().or(z.literal("")),
-  field: campaignFieldSchema,
-  recipientContactIds: z.array(z.string().cuid()),
-  recipientGroupIds: z.array(z.string().cuid()),
+  field: campaignFieldDraftSchema,
+  recipientContactIds: entityIdArraySchema("Contato"),
+  recipientGroupIds: entityIdArraySchema("Grupo"),
   channels: z.array(channelSchema),
   wizardStep: z.enum(WIZARD_STEPS),
   scheduledAt: z.string().datetime().optional().or(z.literal("")),
@@ -133,20 +147,22 @@ export const campaignImageStepSchema = z.object({
 });
 
 export const campaignContactsStepSchema = z.object({
-  recipientContactIds: z.array(z.string().cuid()),
+  recipientContactIds: entityIdArraySchema("Contato").default([]),
 });
 
-export const campaignGroupsStepSchema = z.object({
-  recipientGroupIds: z.array(z.string().cuid()),
-  recipientContactIds: z.array(z.string().cuid()),
-}).refine(
-  (data) =>
-    data.recipientContactIds.length > 0 || data.recipientGroupIds.length > 0,
-  {
-    message: "Selecione ao menos um contato ou grupo",
-    path: ["recipientGroupIds"],
-  },
-);
+export const campaignGroupsStepSchema = z
+  .object({
+    recipientGroupIds: entityIdArraySchema("Grupo").default([]),
+    recipientContactIds: entityIdArraySchema("Contato").default([]),
+  })
+  .refine(
+    (data) =>
+      data.recipientContactIds.length > 0 || data.recipientGroupIds.length > 0,
+    {
+      message: "Selecione ao menos um contato ou grupo",
+      path: ["recipientGroupIds"],
+    },
+  );
 
 export const campaignChannelStepSchema = z.object({
   channels: z.array(channelSchema).min(1, "Selecione ao menos um canal"),
@@ -232,6 +248,51 @@ export function getPreviousWizardStep(step: WizardStep): WizardStep | null {
   return WIZARD_STEPS[index - 1]!;
 }
 
+const WIZARD_FIELD_LABELS: Record<string, string> = {
+  recipientContactIds: "contatos",
+  recipientGroupIds: "grupos",
+  channels: "canais",
+  templateId: "template",
+  nome: "nome da campanha",
+  type: "tipo",
+  field: "conteúdo",
+  scheduledAt: "data de agendamento",
+};
+
+/** Converte erros genéricos do Zod em mensagens claras em português. */
+export function formatZodValidationError(error: ZodError): string {
+  const issue = error.issues[0];
+  if (!issue) return "Dados inválidos";
+
+  const message = issue.message;
+  const fieldKey = String(issue.path[0] ?? "");
+  const fieldLabel = WIZARD_FIELD_LABELS[fieldKey];
+
+  if (
+    message &&
+    message !== "Invalid input" &&
+    !message.startsWith("Invalid input:")
+  ) {
+    return message;
+  }
+
+  if (message.includes("expected array, received undefined")) {
+    if (fieldLabel) {
+      return `Informe a seleção de ${fieldLabel} antes de avançar`;
+    }
+    return "Seleção de destinatários inválida";
+  }
+
+  if (message === "Invalid input" || message.startsWith("Invalid input:")) {
+    if (fieldLabel) {
+      return `Verifique o campo ${fieldLabel} e tente novamente`;
+    }
+    return "Dados inválidos; verifique os campos e tente novamente";
+  }
+
+  return message || "Dados inválidos";
+}
+
 export function validateWizardStep(
   step: WizardStep,
   data: Record<string, unknown>,
@@ -241,7 +302,7 @@ export function validateWizardStep(
   if (!result.success) {
     return {
       success: false,
-      error: result.error.issues[0]?.message ?? "Dados inválidos",
+      error: formatZodValidationError(result.error),
     };
   }
   return { success: true, data: result.data };

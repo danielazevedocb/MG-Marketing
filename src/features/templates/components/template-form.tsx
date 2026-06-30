@@ -67,8 +67,9 @@ export function TemplateForm({ mode, initialData }: TemplateFormProps) {
     },
   });
 
-  const watchedType = form.watch("type");
-  const watchedContent = form.watch("conteudo");
+  // Inclui `nome` na inscrição para o formulário re-renderizar junto com o
+  // campo controlado e preservar a posição do cursor durante a digitação.
+  const [watchedType, watchedContent] = form.watch(["type", "conteudo", "nome"]);
 
   function onSubmit(values: TemplateFormInput) {
     setServerError(null);
@@ -111,6 +112,8 @@ export function TemplateForm({ mode, initialData }: TemplateFormProps) {
                   <FormControl>
                     <Input
                       placeholder="Ex.: Promoção de verão"
+                      autoComplete="off"
+                      dir="ltr"
                       disabled={isPending}
                       {...field}
                     />

@@ -38,3 +38,14 @@ export async function listGroups(): Promise<GroupWithCount[]> {
     orderBy: { nome: "asc" },
   });
 }
+
+export async function findExistingGroupIds(ids: string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+
+  const groups = await prisma.group.findMany({
+    where: { id: { in: ids } },
+    select: { id: true },
+  });
+
+  return new Set(groups.map((group) => group.id));
+}

@@ -39,7 +39,7 @@ export function WhatsAppPreview({
       </div>
 
       <div className="bg-[#e5ddd5] px-4 py-5 dark:bg-[#0b141a]">
-        <div className="max-w-[92%] rounded-lg rounded-tl-none bg-white px-3 py-2 text-sm leading-relaxed text-[#111b21] shadow-sm dark:bg-[#1f2c34] dark:text-[#e9edef]">
+        <div className="max-w-[92%] min-w-0 break-words rounded-lg rounded-tl-none bg-white px-3 py-2 text-sm leading-relaxed text-[#111b21] shadow-sm dark:bg-[#1f2c34] dark:text-[#e9edef]">
           {formattedMessage ? (
             <WhatsAppMessageBody message={formattedMessage} />
           ) : (

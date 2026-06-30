@@ -27,14 +27,16 @@ import {
   findContactIdsByGroupIds,
   findContactsByIds,
 } from "@/repositories/contact";
-import { findTemplateById } from "@/repositories/template";
+import { findExistingGroupIds } from "@/repositories/group";
 import {
   campaignFieldSchema,
   campaignListFiltersSchema,
   campaignWizardStateSchema,
   emptyFieldInput,
   getNextWizardStep,
+  formatZodValidationError,
   validateWizardStep,
+  type CampaignFieldDraftInput,
   type CampaignFieldInput,
   type CampaignListFiltersInput,
   type CampaignWizardStateInput,
@@ -85,7 +87,7 @@ export type CampaignListResponse = {
 };
 
 function formatZodError(error: ZodError): string {
-  return error.issues[0]?.message ?? "Dados inválidos";
+  return formatZodValidationError(error);
 }
 
 function parseValidade(value: string | undefined): Date | null {
@@ -115,7 +117,7 @@ function fieldToDto(field: CampaignWithRelations["field"]): CampaignFieldDto | n
   };
 }
 
-function fieldInputToData(input: CampaignFieldInput): CampaignFieldData {
+function fieldInputToData(input: CampaignFieldDraftInput): CampaignFieldData {
   return {
     titulo: input.titulo || null,
     subtitulo: input.subtitulo || null,
@@ -314,6 +316,22 @@ export class CampaignService {
     const validation = validateWizardStep(currentStep, stepData);
     if (!validation.success) {
       throw new CampaignWizardError(validation.error);
+    }
+
+    if (currentStep === "contatos") {
+      const data = validation.data as { recipientContactIds: string[] };
+      await this.validateRecipientReferences(data.recipientContactIds, []);
+    }
+
+    if (currentStep === "grupos") {
+      const data = validation.data as {
+        recipientContactIds: string[];
+        recipientGroupIds: string[];
+      };
+      await this.validateRecipientReferences(
+        data.recipientContactIds,
+        data.recipientGroupIds,
+      );
     }
 
     const currentState = await this.buildWizardState(existing);
@@ -592,6 +610,33 @@ export class CampaignService {
       throw new CampaignValidationError(formatZodError(result.error));
     }
     return result.data;
+  }
+
+  private async validateRecipientReferences(
+    contactIds: string[],
+    groupIds: string[],
+  ): Promise<void> {
+    const uniqueContactIds = [...new Set(contactIds)];
+    const uniqueGroupIds = [...new Set(groupIds)];
+
+    const [contacts, existingGroupIds] = await Promise.all([
+      uniqueContactIds.length > 0
+        ? findContactsByIds(uniqueContactIds)
+        : Promise.resolve([]),
+      findExistingGroupIds(uniqueGroupIds),
+    ]);
+
+    if (contacts.length !== uniqueContactIds.length) {
+      throw new CampaignWizardError(
+        "Um ou mais contatos selecionados não existem",
+      );
+    }
+
+    if (uniqueGroupIds.some((id) => !existingGroupIds.has(id))) {
+      throw new CampaignWizardError(
+        "Um ou mais grupos selecionados não existem",
+      );
+    }
   }
 }
 

@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { FileAssetType } from "@/generated/prisma/enums";
 import { cn } from "@/lib/utils";
+import { getMaxFileSizeForAssetType } from "@/schemas/file-upload";
 
 type FileDropzoneProps = {
   assetType: FileAssetType;
@@ -54,6 +55,15 @@ export function FileDropzone({
   const uploadFile = useCallback(
     (file: File) => {
       setLocalError(null);
+
+      const maxSize = getMaxFileSizeForAssetType(assetType);
+      if (file.size > maxSize) {
+        const message = `Arquivo excede o limite de ${Math.round(maxSize / (1024 * 1024))} MB`;
+        setLocalError(message);
+        onError?.(message);
+        return;
+      }
+
       const formData = new FormData();
       formData.append("file", file);
       formData.append("type", assetType);
@@ -111,7 +121,7 @@ export function FileDropzone({
     preview?.mimeType?.startsWith("image/") && preview.url;
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("w-full min-w-0 space-y-3", className)}>
       <div
         role="button"
         tabIndex={disabled || isPending ? -1 : 0}
@@ -129,7 +139,7 @@ export function FileDropzone({
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         className={cn(
-          "border-input bg-muted/30 hover:bg-muted/50 focus-visible:ring-ring flex min-h-40 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-6 text-center transition-colors focus-visible:ring-2 focus-visible:outline-none",
+          "border-input bg-muted/30 hover:bg-muted/50 focus-visible:ring-ring flex min-h-40 w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-6 text-center transition-colors focus-visible:ring-2 focus-visible:outline-none",
           isDragging && "border-primary bg-primary/5",
           (disabled || isPending) && "cursor-not-allowed opacity-60",
         )}
@@ -172,7 +182,7 @@ export function FileDropzone({
       ) : null}
 
       {preview ? (
-        <div className="border-input flex items-start gap-3 rounded-lg border p-3">
+        <div className="border-input flex w-full min-w-0 items-start gap-3 overflow-hidden rounded-lg border p-3">
           {showImagePreview ? (
             <div className="bg-muted relative size-16 shrink-0 overflow-hidden rounded-md">
               <Image

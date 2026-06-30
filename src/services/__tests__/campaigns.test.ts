@@ -11,6 +11,8 @@ const updateCampaignMock = vi.fn();
 const findCampaignByIdMock = vi.fn();
 const duplicateCampaignRecordMock = vi.fn();
 const findContactIdsByGroupIdsMock = vi.fn();
+const findContactsByIdsMock = vi.fn();
+const findExistingGroupIdsMock = vi.fn();
 const findTemplateByIdMock = vi.fn();
 const createAuditLogMock = vi.fn();
 
@@ -27,7 +29,12 @@ vi.mock("@/repositories/campaign", () => ({
 vi.mock("@/repositories/contact", () => ({
   findContactIdsByGroupIds: (...args: unknown[]) =>
     findContactIdsByGroupIdsMock(...args),
-  findContactsByIds: vi.fn(),
+  findContactsByIds: (...args: unknown[]) => findContactsByIdsMock(...args),
+}));
+
+vi.mock("@/repositories/group", () => ({
+  findExistingGroupIds: (...args: unknown[]) =>
+    findExistingGroupIdsMock(...args),
 }));
 
 vi.mock("@/repositories/template", () => ({
@@ -84,6 +91,8 @@ describe("CampaignService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     findContactIdsByGroupIdsMock.mockResolvedValue([]);
+    findContactsByIdsMock.mockResolvedValue([]);
+    findExistingGroupIdsMock.mockResolvedValue(new Set());
     service = new CampaignService();
   });
 
@@ -128,6 +137,32 @@ describe("CampaignService", () => {
     expect(updateCampaignMock).toHaveBeenCalledOnce();
   });
 
+  it("avanço na etapa criar preserva nome com conteúdo vazio", async () => {
+    findCampaignByIdMock.mockResolvedValue({
+      ...sampleCampaign,
+      field: {
+        ...sampleField,
+        titulo: null,
+        texto: null,
+      },
+    });
+    updateCampaignMock.mockResolvedValue({
+      ...sampleCampaign,
+      nome: "tese",
+      wizardStep: "tipo",
+    });
+
+    const result = await service.advanceWizardStep(
+      "campaign-1",
+      "criar",
+      { nome: "tese" },
+      "user-1",
+    );
+
+    expect(result.nextStep).toBe("tipo");
+    expect(result.campaign.nome).toBe("tese");
+  });
+
   it("avanço válido preserva estado e avança etapa", async () => {
     findCampaignByIdMock.mockResolvedValue(sampleCampaign);
     updateCampaignMock.mockResolvedValue({
@@ -158,6 +193,65 @@ describe("CampaignService", () => {
         "user-1",
       ),
     ).rejects.toThrow("Selecione um template");
+  });
+
+  it("avanço na etapa grupos aceita grupo selecionado sem contatos", async () => {
+    const groupId = "seed_group_001";
+    findExistingGroupIdsMock.mockResolvedValue(new Set([groupId]));
+    findCampaignByIdMock.mockResolvedValue({
+      ...sampleCampaign,
+      wizardStep: "grupos",
+      recipientContactIds: [],
+      recipientGroupIds: [],
+    });
+    updateCampaignMock.mockResolvedValue({
+      ...sampleCampaign,
+      wizardStep: "canal",
+      recipientGroupIds: [groupId],
+    });
+
+    const result = await service.advanceWizardStep(
+      "campaign-1",
+      "grupos",
+      { recipientGroupIds: [groupId], recipientContactIds: [] },
+      "user-1",
+    );
+
+    expect(result.nextStep).toBe("canal");
+    expect(result.campaign.recipientGroupIds).toEqual([groupId]);
+  });
+
+  it("etapa grupos rejeita grupo inexistente no banco", async () => {
+    findExistingGroupIdsMock.mockResolvedValue(new Set());
+    findCampaignByIdMock.mockResolvedValue({
+      ...sampleCampaign,
+      wizardStep: "grupos",
+    });
+
+    await expect(
+      service.advanceWizardStep(
+        "campaign-1",
+        "grupos",
+        { recipientGroupIds: ["grupo-inexistente"], recipientContactIds: [] },
+        "user-1",
+      ),
+    ).rejects.toThrow("Um ou mais grupos selecionados não existem");
+  });
+
+  it("etapa grupos sem seleção lança erro claro", async () => {
+    findCampaignByIdMock.mockResolvedValue({
+      ...sampleCampaign,
+      wizardStep: "grupos",
+    });
+
+    await expect(
+      service.advanceWizardStep(
+        "campaign-1",
+        "grupos",
+        { recipientGroupIds: [], recipientContactIds: [] },
+        "user-1",
+      ),
+    ).rejects.toThrow("Selecione ao menos um contato ou grupo");
   });
 
   it("duplicar cria nova campanha em draft sem alterar original", async () => {

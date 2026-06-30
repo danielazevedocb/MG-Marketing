@@ -138,7 +138,7 @@ export function ContactForm({ mode, initialData }: ContactFormProps) {
             <FormItem>
               <FormLabel>Nome do contato</FormLabel>
               <FormControl>
-                <Input placeholder="Opcional" disabled={isPending} {...field} />
+                <Input placeholder="Opcional" autoComplete="off" dir="ltr" disabled={isPending} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

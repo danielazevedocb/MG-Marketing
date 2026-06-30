@@ -116,6 +116,8 @@ export function CampaignWizard({
   const form = useForm<CampaignWizardStateInput>({
     defaultValues: buildDefaultValues(initialCampaign),
     mode: "onChange",
+    // Mantém contatos/grupos selecionados ao trocar de etapa (campos desmontados).
+    shouldUnregister: false,
   });
 
   const templatesQuery = useQuery({
@@ -186,11 +188,11 @@ export function CampaignWizard({
       case "imagem":
         return { field: { banner: values.field.banner, imagem: values.field.imagem } };
       case "contatos":
-        return { recipientContactIds: values.recipientContactIds };
+        return { recipientContactIds: values.recipientContactIds ?? [] };
       case "grupos":
         return {
-          recipientGroupIds: values.recipientGroupIds,
-          recipientContactIds: values.recipientContactIds,
+          recipientGroupIds: values.recipientGroupIds ?? [],
+          recipientContactIds: values.recipientContactIds ?? [],
         };
       case "canal":
         return { channels: values.channels };
@@ -380,6 +382,8 @@ export function CampaignWizard({
                   <FormControl>
                     <Input
                       placeholder="Ex.: Promoção de inverno"
+                      autoComplete="off"
+                      dir="ltr"
                       disabled={isPending}
                       {...field}
                     />
