@@ -7,6 +7,7 @@ import {
   ProviderType,
   SendStatus,
 } from "@/generated/prisma/enums";
+import { CampaignValidationError } from "@/lib/campaign-errors";
 import { NoActiveEmailProviderError } from "@/lib/sending-errors";
 
 const findCampaignByIdMock = vi.fn();
@@ -219,6 +220,27 @@ describe("ChannelDispatchService", () => {
         wizardStep: "enviar",
       }),
     );
+  });
+
+  it("bloqueia envio quando o conteúdo está incompleto (título/texto vazios)", async () => {
+    findCampaignByIdMock.mockResolvedValue({
+      ...baseCampaign,
+      field: {
+        ...baseCampaign.field,
+        titulo: null,
+        texto: null,
+      },
+    });
+
+    await expect(
+      service.dispatchCampaign("campaign-1", "user-1"),
+    ).rejects.toBeInstanceOf(CampaignValidationError);
+    await expect(
+      service.dispatchCampaign("campaign-1", "user-1"),
+    ).rejects.toThrow("Conteúdo da campanha incompleto");
+    expect(sendCampaignEmailMock).not.toHaveBeenCalled();
+    expect(createSendHistoryMock).not.toHaveBeenCalled();
+    expect(updateCampaignMock).not.toHaveBeenCalled();
   });
 
   it("registra falha de email quando não há provedor ativo no canal ambos", async () => {

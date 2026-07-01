@@ -319,6 +319,23 @@ describe("CampaignService", () => {
     );
   });
 
+  it("rejeita agendamento quando o conteúdo está incompleto", async () => {
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    findCampaignByIdMock.mockResolvedValue({
+      ...sampleCampaign,
+      field: {
+        ...sampleField,
+        titulo: null,
+        texto: null,
+      },
+    });
+
+    await expect(
+      service.scheduleCampaign("campaign-1", future, "user-1"),
+    ).rejects.toThrow("Conteúdo da campanha incompleto");
+    expect(updateCampaignMock).not.toHaveBeenCalled();
+  });
+
   it("rejeita agendamento com data no passado", async () => {
     findCampaignByIdMock.mockResolvedValue(sampleCampaign);
     const past = new Date(Date.now() - 60_000).toISOString();

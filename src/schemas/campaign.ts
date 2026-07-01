@@ -268,29 +268,28 @@ export function formatZodValidationError(error: ZodError): string {
   const fieldKey = String(issue.path[0] ?? "");
   const fieldLabel = WIZARD_FIELD_LABELS[fieldKey];
 
-  if (
-    message &&
-    message !== "Invalid input" &&
-    !message.startsWith("Invalid input:")
-  ) {
+  // Mensagens já customizadas em pt-BR nos schemas têm prioridade. As mensagens
+  // genéricas do Zod ("Invalid input"/"Invalid input: ...") são traduzidas abaixo
+  // com base no código do problema (issue.code), não no texto em inglês.
+  const isGenericMessage =
+    !message || message === "Invalid input" || message.startsWith("Invalid input");
+
+  if (!isGenericMessage) {
     return message;
   }
 
-  if (message.includes("expected array, received undefined")) {
+  // Tipo inesperado (ex.: seleção de destinatários ausente ou em formato inválido).
+  if (issue.code === "invalid_type") {
     if (fieldLabel) {
       return `Informe a seleção de ${fieldLabel} antes de avançar`;
     }
     return "Seleção de destinatários inválida";
   }
 
-  if (message === "Invalid input" || message.startsWith("Invalid input:")) {
-    if (fieldLabel) {
-      return `Verifique o campo ${fieldLabel} e tente novamente`;
-    }
-    return "Dados inválidos; verifique os campos e tente novamente";
+  if (fieldLabel) {
+    return `Verifique o campo ${fieldLabel} e tente novamente`;
   }
-
-  return message || "Dados inválidos";
+  return "Dados inválidos; verifique os campos e tente novamente";
 }
 
 export function validateWizardStep(

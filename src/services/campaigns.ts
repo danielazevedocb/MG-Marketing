@@ -1,6 +1,4 @@
 // Serviço de campanhas — regras de negócio, wizard, rascunho e auditoria.
-import { ZodError } from "zod";
-
 import {
   CampaignStatus,
   CampaignType,
@@ -86,8 +84,15 @@ export type CampaignListResponse = {
   pageSize: number;
 };
 
-function formatZodError(error: ZodError): string {
-  return formatZodValidationError(error);
+export const INCOMPLETE_CAMPAIGN_CONTENT_MESSAGE =
+  "Conteúdo da campanha incompleto: título e texto são obrigatórios para envio.";
+
+/** Revalida o conteúdo com o schema estrito antes de enviar/agendar. */
+export function assertCampaignContentComplete(content: CampaignFieldInput): void {
+  const result = campaignFieldSchema.safeParse(content);
+  if (!result.success) {
+    throw new CampaignValidationError(INCOMPLETE_CAMPAIGN_CONTENT_MESSAGE);
+  }
 }
 
 function parseValidade(value: string | undefined): Date | null {
@@ -248,7 +253,7 @@ export class CampaignService {
       .pick({ nome: true })
       .safeParse({ nome });
     if (!parsed.success) {
-      throw new CampaignValidationError(formatZodError(parsed.error));
+      throw new CampaignValidationError(formatZodValidationError(parsed.error));
     }
 
     const campaign = await createCampaign({
@@ -406,6 +411,8 @@ export class CampaignService {
         "Apenas campanhas em rascunho podem ser agendadas",
       );
     }
+
+    assertCampaignContentComplete(fieldToInput(fieldToDto(existing.field)));
 
     const scheduledAt = this.parseFutureScheduledAt(scheduledAtIso);
 
@@ -597,7 +604,7 @@ export class CampaignService {
   validateFieldContent(input: CampaignFieldInput): CampaignFieldInput {
     const result = campaignFieldSchema.safeParse(input);
     if (!result.success) {
-      throw new CampaignValidationError(formatZodError(result.error));
+      throw new CampaignValidationError(formatZodValidationError(result.error));
     }
     return result.data;
   }
@@ -607,7 +614,7 @@ export class CampaignService {
   ): CampaignWizardStateInput {
     const result = campaignWizardStateSchema.safeParse(input);
     if (!result.success) {
-      throw new CampaignValidationError(formatZodError(result.error));
+      throw new CampaignValidationError(formatZodValidationError(result.error));
     }
     return result.data;
   }

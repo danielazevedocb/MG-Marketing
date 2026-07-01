@@ -11,7 +11,7 @@ import { findCampaignById, updateCampaign } from "@/repositories/campaign";
 import { findContactsByIds } from "@/repositories/contact";
 import { createSendHistory } from "@/repositories/send-history";
 import type { CampaignFieldInput } from "@/schemas/campaign";
-import { fieldToInput } from "@/services/campaigns";
+import { assertCampaignContentComplete, fieldToInput } from "@/services/campaigns";
 import {
   getActiveEmailProviderContext,
   sendCampaignEmail,
@@ -147,6 +147,8 @@ export class ChannelDispatchService {
           }
         : null,
     );
+
+    assertCampaignContentComplete(content);
 
     const getActiveProvider =
       this.deps.getActiveProvider ?? getActiveEmailProviderContext;
