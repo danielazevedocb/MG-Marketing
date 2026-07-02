@@ -22,8 +22,13 @@ const BCRYPT_ROUNDS = 10;
 const SAMPLE_GROUPS = [
   { nome: "Clientes", descricao: "Contatos de clientes ativos" },
   { nome: "Leads", descricao: "Potenciais clientes em prospecção" },
-  { nome: "Fornecedores", descricao: "Parceiros e fornecedores" },
+  { nome: "Parceiros", descricao: "Parceiros comerciais" },
 ] as const;
+
+/** Renomeações de grupos legados aplicadas antes do upsert (idempotente). */
+const LEGACY_GROUP_RENAMES: Record<string, string> = {
+  Fornecedores: "Parceiros",
+};
 
 const SAMPLE_TAGS = [
   { nome: "VIP", cor: "#f59e0b" },
@@ -49,6 +54,19 @@ export async function seed(prisma: SeedClient): Promise<void> {
       passwordHash,
     },
   });
+
+  // Renomeia grupos legados (ex.: "Fornecedores" → "Parceiros") sem duplicar.
+  for (const [oldNome, newNome] of Object.entries(LEGACY_GROUP_RENAMES)) {
+    const targetExists = await prisma.group.findUnique({
+      where: { nome: newNome },
+    });
+    if (!targetExists) {
+      await prisma.group.updateMany({
+        where: { nome: oldNome },
+        data: { nome: newNome },
+      });
+    }
+  }
 
   // Grupos de exemplo (idempotentes por `nome` único).
   for (const group of SAMPLE_GROUPS) {

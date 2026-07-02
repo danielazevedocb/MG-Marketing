@@ -9,7 +9,11 @@ import { seed } from "../../../prisma/seed";
 function createMockClient() {
   return {
     user: { upsert: vi.fn().mockResolvedValue({}) },
-    group: { upsert: vi.fn().mockResolvedValue({}) },
+    group: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      upsert: vi.fn().mockResolvedValue({}),
+    },
     tag: { upsert: vi.fn().mockResolvedValue({}) },
     template: { upsert: vi.fn().mockResolvedValue({}) },
   };

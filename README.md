@@ -107,7 +107,7 @@ npm run db:seed
 Cria:
 
 - Usuário **Administrador** (credenciais abaixo)
-- Grupos de exemplo: Clientes, Leads, Fornecedores
+- Grupos de exemplo: Clientes, Leads, Parceiros
 - Tags de exemplo: VIP, Newsletter, Promoções
 
 #### Credenciais padrão do administrador (desenvolvimento)
