@@ -10,6 +10,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { FileAssetType } from "@/generated/prisma/enums";
 import type { CampaignWizardStateInput } from "@/schemas/campaign";
@@ -116,7 +117,11 @@ export function CampaignContentEditor({
           <FormItem>
             <FormLabel>Validade</FormLabel>
             <FormControl>
-              <Input type="date" disabled={disabled} {...field} />
+              <DatePicker
+                disabled={disabled}
+                value={field.value ?? ""}
+                onChange={field.onChange}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>

@@ -28,6 +28,13 @@ describe("validateWizardStep", () => {
     expect(result.success).toBe(false);
   });
 
+  it("etapa template aceita ID legado de seed", () => {
+    const result = validateWizardStep("template", {
+      templateId: "seed-template-promocao-sazonal",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("etapa grupos exige contato ou grupo", () => {
     const result = validateWizardStep("grupos", {
       recipientContactIds: [],
@@ -152,6 +159,15 @@ describe("campaignWizardStateSchema", () => {
 
   it("aceita rascunho com conteúdo vazio nas etapas iniciais", () => {
     const result = campaignWizardStateSchema.safeParse(draftState);
+    expect(result.success).toBe(true);
+  });
+
+  it("aceita templateId legado de seed no estado do wizard", () => {
+    const result = campaignWizardStateSchema.safeParse({
+      ...draftState,
+      templateId: "seed-template-promocao-sazonal",
+      wizardStep: "enviar",
+    });
     expect(result.success).toBe(true);
   });
 });

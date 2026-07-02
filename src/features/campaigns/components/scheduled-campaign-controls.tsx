@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { Label } from "@/components/ui/label";
 
 type ScheduledCampaignControlsProps = {
@@ -42,9 +42,7 @@ export function ScheduledCampaignControls({
 }: ScheduledCampaignControlsProps) {
   const [isPending, startTransition] = useTransition();
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
-  const [rescheduleAt, setRescheduleAt] = useState(
-    campaign.scheduledAt ? campaign.scheduledAt.slice(0, 16) : "",
-  );
+  const [rescheduleAt, setRescheduleAt] = useState(campaign.scheduledAt ?? "");
   const [error, setError] = useState<string | null>(null);
 
   function handleCancel() {
@@ -67,11 +65,9 @@ export function ScheduledCampaignControls({
       return;
     }
 
-    const iso = new Date(rescheduleAt).toISOString();
-
     startTransition(async () => {
       setError(null);
-      const result = await rescheduleCampaignAction(campaign.id, iso);
+      const result = await rescheduleCampaignAction(campaign.id, rescheduleAt);
       if (!result.success) {
         setError(result.error);
         return;
@@ -96,9 +92,7 @@ export function ScheduledCampaignControls({
           disabled={disabled || isPending}
           onClick={() => {
             setError(null);
-            setRescheduleAt(
-              campaign.scheduledAt ? campaign.scheduledAt.slice(0, 16) : "",
-            );
+            setRescheduleAt(campaign.scheduledAt ?? "");
             setRescheduleOpen(true);
           }}
         >
@@ -132,12 +126,11 @@ export function ScheduledCampaignControls({
 
           <div className="space-y-2">
             <Label htmlFor={`reschedule-${campaign.id}`}>Data e hora</Label>
-            <Input
+            <DateTimePicker
               id={`reschedule-${campaign.id}`}
-              type="datetime-local"
               value={rescheduleAt}
               disabled={isPending}
-              onChange={(event) => setRescheduleAt(event.target.value)}
+              onChange={setRescheduleAt}
             />
           </div>
 

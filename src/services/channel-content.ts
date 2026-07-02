@@ -1,7 +1,7 @@
 // Geração de conteúdo por canal — compartilhado entre preview e sending.
-import type { CampaignFieldInput } from "@/schemas/campaign";
+import type { CampaignFieldDraftInput } from "@/schemas/campaign";
 
-export type CampaignChannelContent = CampaignFieldInput;
+export type CampaignChannelContent = CampaignFieldDraftInput;
 
 export function escapeHtml(value: string): string {
   return value

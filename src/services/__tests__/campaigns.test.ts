@@ -195,6 +195,73 @@ describe("CampaignService", () => {
     ).rejects.toThrow("Selecione um template");
   });
 
+  it("avanço na etapa template aceita ID legado de seed", async () => {
+    const seedTemplateId = "seed-template-promocao-sazonal";
+    findTemplateByIdMock.mockResolvedValue({
+      id: seedTemplateId,
+      conteudo: JSON.stringify({
+        titulo: "Promoção",
+        subtitulo: "",
+        corpo: "Corpo da promoção",
+        ctaTexto: "",
+        ctaUrl: "",
+        bannerUrl: "",
+        precoOriginal: "",
+        precoPromocional: "",
+        validade: "",
+        nomeProduto: "",
+        preco: "",
+        destaque: "",
+      }),
+    });
+    findCampaignByIdMock.mockResolvedValue(sampleCampaign);
+    updateCampaignMock.mockResolvedValue({
+      ...sampleCampaign,
+      templateId: seedTemplateId,
+      wizardStep: "conteudo",
+    });
+
+    const result = await service.advanceWizardStep(
+      "campaign-1",
+      "template",
+      { templateId: seedTemplateId },
+      "user-1",
+    );
+
+    expect(result.nextStep).toBe("conteudo");
+    expect(result.campaign.templateId).toBe(seedTemplateId);
+    expect(findTemplateByIdMock).toHaveBeenCalledWith(seedTemplateId);
+  });
+
+  it("avanço de preview para enviar preserva templateId legado de seed", async () => {
+    const seedTemplateId = "seed-template-promocao-sazonal";
+    findCampaignByIdMock.mockResolvedValue({
+      ...sampleCampaign,
+      templateId: seedTemplateId,
+      wizardStep: "preview",
+      channels: [Channel.WhatsApp],
+      recipientGroupIds: ["seed_group_001"],
+    });
+    updateCampaignMock.mockResolvedValue({
+      ...sampleCampaign,
+      templateId: seedTemplateId,
+      wizardStep: "enviar",
+    });
+
+    const result = await service.advanceWizardStep(
+      "campaign-1",
+      "preview",
+      {},
+      "user-1",
+    );
+
+    expect(result.nextStep).toBe("enviar");
+    expect(updateCampaignMock).toHaveBeenCalledWith(
+      "campaign-1",
+      expect.objectContaining({ templateId: seedTemplateId }),
+    );
+  });
+
   it("avanço na etapa grupos aceita grupo selecionado sem contatos", async () => {
     const groupId = "seed_group_001";
     findExistingGroupIdsMock.mockResolvedValue(new Set([groupId]));

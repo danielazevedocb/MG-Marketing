@@ -26,6 +26,7 @@ import {
   findContactsByIds,
 } from "@/repositories/contact";
 import { findExistingGroupIds } from "@/repositories/group";
+import { findTemplateById } from "@/repositories/template";
 import {
   campaignFieldSchema,
   campaignListFiltersSchema,

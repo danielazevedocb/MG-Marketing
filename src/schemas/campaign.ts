@@ -7,7 +7,7 @@ import {
   Channel,
 } from "@/generated/prisma/enums";
 import { normalizeOptionalString } from "@/schemas/contact";
-import { entityIdArraySchema } from "@/schemas/id";
+import { entityIdArraySchema, entityIdSchema } from "@/schemas/id";
 
 const optionalUrl = z
   .string()
@@ -115,7 +115,7 @@ export const campaignWizardStateSchema = z.object({
     .min(1, "Nome da campanha é obrigatório")
     .max(120, "Nome muito longo"),
   type: campaignTypeSchema,
-  templateId: z.string().cuid().optional().or(z.literal("")),
+  templateId: entityIdSchema("Template").optional().or(z.literal("")),
   field: campaignFieldDraftSchema,
   recipientContactIds: entityIdArraySchema("Contato"),
   recipientGroupIds: entityIdArraySchema("Grupo"),
@@ -135,7 +135,11 @@ export const campaignTypeStepSchema = z.object({
 });
 
 export const campaignTemplateStepSchema = z.object({
-  templateId: z.string().cuid("Selecione um template"),
+  templateId: z
+    .string()
+    .trim()
+    .refine((value) => value.length > 0, { message: "Selecione um template" })
+    .pipe(entityIdSchema("Template")),
 });
 
 export const campaignContentStepSchema = z.object({

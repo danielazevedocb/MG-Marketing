@@ -25,6 +25,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useAutosave } from "@/hooks/use-autosave";
@@ -589,22 +590,10 @@ export function CampaignWizard({
                   <FormItem>
                     <FormLabel>Agendar envio</FormLabel>
                     <FormControl>
-                      <Input
-                        type="datetime-local"
+                      <DateTimePicker
                         disabled={isPending || !canSend}
-                        value={
-                          field.value
-                            ? field.value.slice(0, 16)
-                            : ""
-                        }
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          field.onChange(
-                            value
-                              ? new Date(value).toISOString()
-                              : "",
-                          );
-                        }}
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
                       />
                     </FormControl>
                     <FormMessage />

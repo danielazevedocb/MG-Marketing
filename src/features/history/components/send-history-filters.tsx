@@ -1,6 +1,6 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { CHANNEL_LABELS } from "@/schemas/campaign";
 import {
@@ -23,17 +23,17 @@ export function SendHistoryFilters({
 }: SendHistoryFiltersProps) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-      <Input
-        type="date"
+      <DatePicker
         value={filters.dateFrom ?? ""}
-        onChange={(event) => onChange({ dateFrom: event.target.value })}
+        onChange={(dateFrom) => onChange({ dateFrom })}
         aria-label="Data inicial"
+        placeholder="Data inicial"
       />
-      <Input
-        type="date"
+      <DatePicker
         value={filters.dateTo ?? ""}
-        onChange={(event) => onChange({ dateTo: event.target.value })}
+        onChange={(dateTo) => onChange({ dateTo })}
         aria-label="Data final"
+        placeholder="Data final"
       />
 
       <Select
