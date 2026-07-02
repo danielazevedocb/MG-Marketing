@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { ListSkeleton } from "@/components/list-skeleton";
 import type { AuditLogDto } from "@/actions/history";
 
 type AuditLogListProps = {
@@ -47,9 +48,7 @@ export function AuditLogList({
   }
 
   if (isLoading && items.length === 0) {
-    return (
-      <p className="text-muted-foreground text-sm">Carregando auditoria...</p>
-    );
+    return <ListSkeleton rows={5} />;
   }
 
   if (items.length === 0) {

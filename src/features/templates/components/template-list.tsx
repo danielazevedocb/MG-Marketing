@@ -1,14 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Copy,
-  LayoutTemplate,
-  Pencil,
-  Plus,
-  Star,
-  Trash2,
-} from "lucide-react";
+import { Copy, LayoutTemplate, Pencil, Plus, Star, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import {
@@ -17,6 +10,7 @@ import {
   toggleTemplateFavoriteAction,
   type TemplateDto,
 } from "@/actions/templates";
+import { toast } from "sonner";
 import { FavoriteButton } from "@/components/favorite-button";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
@@ -82,7 +76,10 @@ export function TemplateList({
     startTransition(async () => {
       const result = await duplicateTemplateAction(template.id);
       if (result.success) {
+        toast.success("Template duplicado.");
         onChanged();
+      } else {
+        toast.error(result.error);
       }
     });
   }
@@ -122,12 +119,16 @@ export function TemplateList({
           <thead className="bg-muted/40 border-b">
             <tr className="text-muted-foreground text-left">
               <th className="px-4 py-3 font-medium">Nome</th>
-              <th className="hidden px-4 py-3 font-medium md:table-cell">Tipo</th>
+              <th className="hidden px-4 py-3 font-medium md:table-cell">
+                Tipo
+              </th>
               <th className="hidden px-4 py-3 font-medium lg:table-cell">
                 Categoria
               </th>
               <th className="px-4 py-3 font-medium">Favorito</th>
-              {canWrite ? <th className="px-4 py-3 font-medium">Ações</th> : null}
+              {canWrite ? (
+                <th className="px-4 py-3 font-medium">Ações</th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -165,7 +166,9 @@ export function TemplateList({
               templates.map((template) => (
                 <tr key={template.id} className="border-b last:border-b-0">
                   <td className="max-w-0 px-4 py-3">
-                    <div className="min-w-0 break-words font-medium">{template.nome}</div>
+                    <div className="min-w-0 font-medium break-words">
+                      {template.nome}
+                    </div>
                     <div className="text-muted-foreground mt-0.5 text-xs md:hidden">
                       {TEMPLATE_TYPE_LABELS[template.type]}
                     </div>
@@ -255,13 +258,16 @@ export function TemplateList({
         </div>
       ) : null}
 
-      <Dialog open={Boolean(deleteTarget)} onOpenChange={() => setDeleteTarget(null)}>
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={() => setDeleteTarget(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Excluir template</DialogTitle>
             <DialogDescription className="wrap-anywhere">
               Tem certeza que deseja excluir{" "}
-              <span className="font-semibold text-foreground wrap-anywhere">
+              <span className="text-foreground font-semibold wrap-anywhere">
                 {deleteTarget?.nome}
               </span>
               ? Esta ação não pode ser desfeita.

@@ -14,16 +14,52 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils";
 
 type AppNavProps = {
-  active?: "dashboard" | "contacts" | "templates" | "campaigns" | "history" | "settings";
+  active?:
+    | "dashboard"
+    | "contacts"
+    | "templates"
+    | "campaigns"
+    | "history"
+    | "settings";
 };
 
 const navItems = [
-  { id: "dashboard" as const, href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "contacts" as const, href: "/contacts", label: "Contatos", icon: Users },
-  { id: "templates" as const, href: "/templates", label: "Templates", icon: LayoutTemplate },
-  { id: "campaigns" as const, href: "/campaigns", label: "Campanhas", icon: Megaphone },
-  { id: "history" as const, href: "/history", label: "Histórico", icon: History },
-  { id: "settings" as const, href: "/settings/email", label: "Configurações", icon: Settings },
+  {
+    id: "dashboard" as const,
+    href: "/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    id: "contacts" as const,
+    href: "/contacts",
+    label: "Contatos",
+    icon: Users,
+  },
+  {
+    id: "templates" as const,
+    href: "/templates",
+    label: "Templates",
+    icon: LayoutTemplate,
+  },
+  {
+    id: "campaigns" as const,
+    href: "/campaigns",
+    label: "Campanhas",
+    icon: Megaphone,
+  },
+  {
+    id: "history" as const,
+    href: "/history",
+    label: "Histórico",
+    icon: History,
+  },
+  {
+    id: "settings" as const,
+    href: "/settings",
+    label: "Configurações",
+    icon: Settings,
+  },
 ];
 
 export function AppNav({ active = "dashboard" }: AppNavProps) {
@@ -73,7 +109,9 @@ export function AppShell({
   return (
     <div className="flex min-h-dvh flex-col">
       <AppNav active={active} />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
+        {children}
+      </main>
     </div>
   );
 }

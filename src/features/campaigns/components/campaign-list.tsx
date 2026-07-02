@@ -1,12 +1,24 @@
 "use client";
 
-import { Copy, Megaphone, Pencil, Trash2 } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import {
+  Copy,
+  Mail,
+  Megaphone,
+  MessageSquare,
+  Pencil,
+  Send,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import {
   deleteCampaignAction,
   duplicateCampaignAction,
+  resendCampaignAction,
   type CampaignDto,
 } from "@/actions/campaigns";
 import { EmptyState } from "@/components/empty-state";
@@ -14,14 +26,79 @@ import { ListSkeleton } from "@/components/list-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  formatScheduledAt,
-  ScheduledCampaignControls,
-} from "@/features/campaigns/components/scheduled-campaign-controls";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScheduledCampaignControls } from "@/features/campaigns/components/scheduled-campaign-controls";
 import {
   CAMPAIGN_STATUS_LABELS,
   CAMPAIGN_TYPE_LABELS,
 } from "@/schemas/campaign";
-import { CampaignStatus } from "@/generated/prisma/enums";
+import { Channel, CampaignStatus } from "@/generated/prisma/enums";
+
+const STATUS_CLASSES: Record<CampaignStatus, string> = {
+  [CampaignStatus.draft]: "bg-muted text-muted-foreground",
+  [CampaignStatus.scheduled]:
+    "bg-blue-500/10 text-blue-600 border-blue-200 dark:text-blue-400 dark:border-blue-800",
+  [CampaignStatus.sent]:
+    "bg-green-500/10 text-green-600 border-green-200 dark:text-green-400 dark:border-green-800",
+};
+
+const CHANNEL_ICONS: Record<Channel, React.ReactNode> = {
+  [Channel.Email]: <Mail className="size-3.5" />,
+  [Channel.WhatsApp]: <MessageSquare className="size-3.5" />,
+};
+
+const CHANNEL_LABELS: Record<Channel, string> = {
+  [Channel.Email]: "Email",
+  [Channel.WhatsApp]: "WhatsApp",
+};
+
+function formatDate(iso: string): string {
+  return format(new Date(iso), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+}
+
+function recipientLabel(count: number): string {
+  return count === 1 ? "1 destinatário" : `${count} destinatários`;
+}
+
+function CampaignMeta({ campaign }: { campaign: CampaignDto }) {
+  const count = campaign.resolvedRecipientContactIds.length;
+
+  const datePart =
+    campaign.status === CampaignStatus.sent && campaign.sentAt
+      ? `Enviada em ${formatDate(campaign.sentAt)}`
+      : campaign.status === CampaignStatus.scheduled && campaign.scheduledAt
+        ? `Agendada para ${formatDate(campaign.scheduledAt)}`
+        : `Criada em ${formatDate(campaign.createdAt)}`;
+
+  return (
+    <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+      <span>{recipientLabel(count)}</span>
+
+      {campaign.channels.length > 0 && (
+        <>
+          <span aria-hidden>·</span>
+          <span className="flex items-center gap-1.5">
+            {campaign.channels.map((ch) => (
+              <span key={ch} className="flex items-center gap-1">
+                {CHANNEL_ICONS[ch as Channel]}
+                {CHANNEL_LABELS[ch as Channel]}
+              </span>
+            ))}
+          </span>
+        </>
+      )}
+
+      <span aria-hidden>·</span>
+      <span>{datePart}</span>
+    </div>
+  );
+}
 
 type CampaignListProps = {
   campaigns: CampaignDto[];
@@ -49,20 +126,49 @@ export function CampaignList({
   onChanged,
 }: CampaignListProps) {
   const [isPending, startTransition] = useTransition();
+  const [resendTarget, setResendTarget] = useState<CampaignDto | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  function handleDuplicate(id: string) {
+  function handleDuplicate(id: string, nome: string) {
     startTransition(async () => {
       const result = await duplicateCampaignAction(id);
-      if (result.success) onChanged();
+      if (result.success) {
+        toast.success(`"${nome}" duplicada com sucesso.`);
+        onChanged();
+      } else {
+        toast.error(result.error);
+      }
     });
   }
 
-  function handleDelete(id: string) {
-    if (!confirm("Excluir esta campanha?")) return;
+  function handleDelete(id: string, nome: string) {
+    if (
+      !confirm(`Excluir a campanha "${nome}"? Esta ação não pode ser desfeita.`)
+    )
+      return;
     startTransition(async () => {
       const result = await deleteCampaignAction(id);
-      if (result.success) onChanged();
+      if (result.success) {
+        toast.success("Campanha excluída.");
+        onChanged();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  function confirmResend() {
+    if (!resendTarget) return;
+    const targetId = resendTarget.id;
+    setResendTarget(null);
+    startTransition(async () => {
+      const result = await resendCampaignAction(targetId);
+      if (result.success) {
+        toast.success("Campanha reenviada com sucesso.");
+        onChanged();
+      } else {
+        toast.error(result.error);
+      }
     });
   }
 
@@ -103,31 +209,25 @@ export function CampaignList({
             key={campaign.id}
             className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
           >
-            <div className="min-w-0 flex-1 space-y-1">
+            <div className="min-w-0 flex-1 space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
                 <Link
                   href={`/campaigns/${campaign.id}/edit`}
-                  className="min-w-0 break-words font-medium hover:underline"
+                  className="min-w-0 font-medium wrap-break-word hover:underline"
                 >
                   {campaign.nome}
                 </Link>
-                <Badge variant="secondary">
+                <Badge
+                  variant="outline"
+                  className={STATUS_CLASSES[campaign.status]}
+                >
                   {CAMPAIGN_STATUS_LABELS[campaign.status]}
                 </Badge>
                 <Badge variant="outline">
                   {CAMPAIGN_TYPE_LABELS[campaign.type]}
                 </Badge>
               </div>
-              <p className="text-muted-foreground text-sm">
-                {campaign.resolvedRecipientContactIds.length} destinatário(s)
-                {campaign.channels.length > 0
-                  ? ` · ${campaign.channels.join(", ")}`
-                  : ""}
-                {campaign.status === CampaignStatus.scheduled &&
-                campaign.scheduledAt
-                  ? ` · Agendada para ${formatScheduledAt(campaign.scheduledAt)}`
-                  : ""}
-              </p>
+              <CampaignMeta campaign={campaign} />
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -139,33 +239,52 @@ export function CampaignList({
                 />
               ) : null}
 
-              {canWrite ? (
+              {canWrite || canSend ? (
                 <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/campaigns/${campaign.id}/edit`}>
-                    <Pencil className="size-4" />
-                    Editar
-                  </Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isPending}
-                  onClick={() => handleDuplicate(campaign.id)}
-                >
-                  <Copy className="size-4" />
-                  Duplicar
-                </Button>
-                {campaign.status === CampaignStatus.draft ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isPending}
-                    onClick={() => handleDelete(campaign.id)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                ) : null}
+                  {canWrite && (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/campaigns/${campaign.id}/edit`}>
+                        <Pencil className="size-4" />
+                        Editar
+                      </Link>
+                    </Button>
+                  )}
+                  {canWrite && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() =>
+                        handleDuplicate(campaign.id, campaign.nome)
+                      }
+                    >
+                      <Copy className="size-4" />
+                      Duplicar
+                    </Button>
+                  )}
+                  {canSend && campaign.status === CampaignStatus.sent ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => setResendTarget(campaign)}
+                    >
+                      <Send className="size-4" />
+                      Reenviar
+                    </Button>
+                  ) : null}
+                  {canWrite && campaign.status === CampaignStatus.draft ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => handleDelete(campaign.id, campaign.nome)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="size-4" />
+                      Excluir
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -198,6 +317,43 @@ export function CampaignList({
           </div>
         </div>
       ) : null}
+
+      <Dialog
+        open={Boolean(resendTarget)}
+        onOpenChange={() => setResendTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reenviar campanha</DialogTitle>
+            <DialogDescription className="wrap-anywhere">
+              Reenviar{" "}
+              <span className="text-foreground font-medium">
+                &ldquo;{resendTarget?.nome}&rdquo;
+              </span>{" "}
+              para{" "}
+              {resendTarget
+                ? recipientLabel(
+                    resendTarget.resolvedRecipientContactIds.length,
+                  )
+                : ""}
+              ? Um novo envio será criado no histórico.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setResendTarget(null)}
+              disabled={isPending}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={confirmResend} disabled={isPending}>
+              <Send className="size-4" />
+              Reenviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

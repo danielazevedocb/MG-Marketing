@@ -2,6 +2,7 @@
 
 import { Search } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ContactStatus } from "@/generated/prisma/enums";
@@ -14,6 +15,7 @@ type ContactFiltersProps = {
   groups: Option[];
   tags: Option[];
   onChange: (next: Partial<ContactListFiltersInput>) => void;
+  onClear: () => void;
 };
 
 export function ContactFilters({
@@ -21,9 +23,14 @@ export function ContactFilters({
   groups,
   tags,
   onChange,
+  onClear,
 }: ContactFiltersProps) {
+  const hasFilters = Boolean(
+    filters.search || filters.status || filters.groupId || filters.tagId,
+  );
+
   return (
-    <div className="grid w-full gap-3 sm:max-w-3xl sm:grid-cols-2 lg:grid-cols-4">
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       <div className="relative sm:col-span-2">
         <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
         <Input
@@ -68,9 +75,10 @@ export function ContactFilters({
 
       <Select
         value={filters.tagId ?? ""}
-        onChange={(event) => onChange({ tagId: event.target.value || undefined })}
+        onChange={(event) =>
+          onChange({ tagId: event.target.value || undefined })
+        }
         aria-label="Filtrar por tag"
-        className="sm:col-span-2 lg:col-span-1"
       >
         <option value="">Todas as tags</option>
         {tags.map((tag) => (
@@ -79,6 +87,12 @@ export function ContactFilters({
           </option>
         ))}
       </Select>
+
+      {hasFilters ? (
+        <Button variant="ghost" size="sm" onClick={onClear}>
+          Limpar
+        </Button>
+      ) : null}
     </div>
   );
 }

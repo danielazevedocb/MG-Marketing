@@ -1,7 +1,8 @@
 "use client";
 
-import { FileUp, Server } from "lucide-react";
+import { FileUp, Loader2, Server } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import {
   importContactsCsvAction,
@@ -51,6 +52,11 @@ export function ContactImportDialog({ onImported }: ContactImportDialogProps) {
       }
       setResult(response.data);
       onImported();
+      if (response.data.imported > 0) {
+        toast.success(
+          `${response.data.imported} contato(s) importado(s) com sucesso.`,
+        );
+      }
     });
   }
 
@@ -101,7 +107,11 @@ export function ContactImportDialog({ onImported }: ContactImportDialogProps) {
 
           <div className="flex flex-wrap gap-2">
             <Button disabled={isPending} onClick={handleCsvImport}>
-              <FileUp className="size-4" />
+              {isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <FileUp className="size-4" />
+              )}
               {isPending ? "Importando..." : "Importar CSV"}
             </Button>
             <Button
@@ -114,9 +124,7 @@ export function ContactImportDialog({ onImported }: ContactImportDialogProps) {
             </Button>
           </div>
 
-          {error ? (
-            <p className="text-destructive text-sm">{error}</p>
-          ) : null}
+          {error ? <p className="text-destructive text-sm">{error}</p> : null}
 
           {result ? (
             <div className="bg-muted/40 space-y-2 rounded-md border p-3 text-sm">
@@ -139,7 +147,11 @@ export function ContactImportDialog({ onImported }: ContactImportDialogProps) {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button
+            variant="outline"
+            disabled={isPending}
+            onClick={() => setOpen(false)}
+          >
             Fechar
           </Button>
         </DialogFooter>

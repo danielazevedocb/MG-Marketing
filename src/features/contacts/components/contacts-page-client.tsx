@@ -27,7 +27,8 @@ const defaultFilters: ContactListFiltersInput = {
 };
 
 export function ContactsPageClient({ canWrite }: ContactsPageClientProps) {
-  const [filters, setFilters] = useState<ContactListFiltersInput>(defaultFilters);
+  const [filters, setFilters] =
+    useState<ContactListFiltersInput>(defaultFilters);
   const debouncedSearch = useDebounce(filters.search ?? "", 300);
 
   const queryFilters = useMemo(
@@ -77,6 +78,10 @@ export function ContactsPageClient({ canWrite }: ContactsPageClientProps) {
     }));
   }
 
+  function handleClearFilters() {
+    setFilters(defaultFilters);
+  }
+
   function handleImported() {
     void contactsQuery.refetch();
   }
@@ -91,6 +96,7 @@ export function ContactsPageClient({ canWrite }: ContactsPageClientProps) {
           groups={groupsQuery.data ?? []}
           tags={tagsQuery.data ?? []}
           onChange={handleFiltersChange}
+          onClear={handleClearFilters}
         />
         {canWrite ? (
           <div className="flex flex-wrap gap-2">

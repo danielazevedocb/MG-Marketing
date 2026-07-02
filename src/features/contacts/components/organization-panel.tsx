@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import {
   createGroupAction,
@@ -71,24 +72,30 @@ export function OrganizationPanel({
     });
   }
 
-  function handleDeleteGroup(id: string) {
+  function handleDeleteGroup(id: string, nome: string) {
+    if (!confirm(`Remover o grupo "${nome}"? Esta ação não pode ser desfeita.`))
+      return;
     startTransition(async () => {
       const result = await deleteGroupAction(id);
       if (!result.success) {
-        setError(result.error);
+        toast.error(result.error);
         return;
       }
+      toast.success("Grupo removido.");
       onChanged();
     });
   }
 
-  function handleDeleteTag(id: string) {
+  function handleDeleteTag(id: string, nome: string) {
+    if (!confirm(`Remover a tag "${nome}"? Esta ação não pode ser desfeita.`))
+      return;
     startTransition(async () => {
       const result = await deleteTagAction(id);
       if (!result.success) {
-        setError(result.error);
+        toast.error(result.error);
         return;
       }
+      toast.success("Tag removida.");
       onChanged();
     });
   }
@@ -127,7 +134,7 @@ export function OrganizationPanel({
                 variant="ghost"
                 size="sm"
                 disabled={isPending}
-                onClick={() => handleDeleteGroup(group.id)}
+                onClick={() => handleDeleteGroup(group.id, group.nome)}
               >
                 Remover
               </Button>
@@ -168,7 +175,7 @@ export function OrganizationPanel({
                 variant="ghost"
                 size="sm"
                 disabled={isPending}
-                onClick={() => handleDeleteTag(tag.id)}
+                onClick={() => handleDeleteTag(tag.id, tag.nome)}
               >
                 Remover
               </Button>
@@ -177,7 +184,9 @@ export function OrganizationPanel({
         </ul>
       </div>
 
-      {error ? <p className="text-destructive text-sm lg:col-span-2">{error}</p> : null}
+      {error ? (
+        <p className="text-destructive text-sm lg:col-span-2">{error}</p>
+      ) : null}
     </section>
   );
 }

@@ -2,11 +2,11 @@
 
 // Server Actions do módulo de campanhas — protegidas por RBAC no servidor.
 import { z } from "zod";
+import { ForbiddenError, UnauthorizedError } from "@/lib/auth-errors";
 import {
-  ForbiddenError,
-  UnauthorizedError,
-} from "@/lib/auth-errors";
-import { CampaignValidationError, CampaignWizardError } from "@/lib/campaign-errors";
+  CampaignValidationError,
+  CampaignWizardError,
+} from "@/lib/campaign-errors";
 import { NoActiveEmailProviderError, SendingError } from "@/lib/sending-errors";
 import {
   campaignListFiltersSchema,
@@ -213,8 +213,33 @@ export async function sendCampaignAction(
 ): Promise<CampaignActionResult<DispatchCampaignResult>> {
   try {
     const user = await requirePermission("campaigns:send");
-    const data = await getChannelDispatchService().dispatchCampaign(id, user.id);
+    const data = await getChannelDispatchService().dispatchCampaign(
+      id,
+      user.id,
+    );
     return { success: true, data };
+  } catch (error) {
+    return mapActionError(error);
+  }
+}
+
+export async function resendCampaignAction(
+  id: string,
+): Promise<CampaignActionResult<DispatchCampaignResult>> {
+  try {
+    const user = await requirePermission("campaigns:send");
+    const copy = await getCampaignService().resendCampaign(id, user.id);
+
+    try {
+      const data = await getChannelDispatchService().dispatchCampaign(
+        copy.id,
+        user.id,
+      );
+      return { success: true, data };
+    } catch (dispatchError) {
+      await getCampaignService().deleteCampaign(copy.id, user.id);
+      throw dispatchError;
+    }
   } catch (error) {
     return mapActionError(error);
   }

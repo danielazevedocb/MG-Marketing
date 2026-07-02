@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { History, LayoutTemplate, Mail, Megaphone, Settings, Users } from "lucide-react";
+import {
+  History,
+  LayoutTemplate,
+  Megaphone,
+  Settings,
+  Users,
+} from "lucide-react";
 
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -47,7 +53,7 @@ export default function SettingsLayout({
                 Histórico
               </Link>
               <Link
-                href="/settings/email"
+                href="/settings"
                 className="text-foreground flex items-center gap-1.5 font-medium"
               >
                 <Settings className="size-4" />
@@ -62,13 +68,13 @@ export default function SettingsLayout({
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
-        <div className="mb-6 flex items-center gap-2 text-sm">
+        <div className="text-muted-foreground mb-6 flex items-center gap-2 text-sm">
           <Link
-            href="/settings/email"
-            className="text-foreground flex items-center gap-1.5 font-medium"
+            href="/settings"
+            className="hover:text-foreground flex items-center gap-1.5"
           >
-            <Mail className="size-4" />
-            Email
+            <Settings className="size-4" />
+            Configurações
           </Link>
         </div>
         {children}

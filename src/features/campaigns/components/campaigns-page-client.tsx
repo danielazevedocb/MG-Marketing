@@ -60,9 +60,17 @@ export function CampaignsPageClient({
 
   const data: CampaignListResponse | undefined = campaignsQuery.data;
 
+  function handleClearFilters() {
+    setFilters(defaultFilters);
+  }
+
   return (
     <div className="space-y-6">
-      <CampaignFilters filters={filters} onChange={handleFiltersChange} />
+      <CampaignFilters
+        filters={filters}
+        onChange={handleFiltersChange}
+        onClear={handleClearFilters}
+      />
 
       <CampaignList
         campaigns={data?.items ?? []}

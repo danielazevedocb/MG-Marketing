@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
@@ -12,9 +13,16 @@ import { CampaignStatus, CampaignType } from "@/generated/prisma/enums";
 type CampaignFiltersProps = {
   filters: CampaignListFiltersInput;
   onChange: (next: Partial<CampaignListFiltersInput>) => void;
+  onClear: () => void;
 };
 
-export function CampaignFilters({ filters, onChange }: CampaignFiltersProps) {
+export function CampaignFilters({
+  filters,
+  onChange,
+  onClear,
+}: CampaignFiltersProps) {
+  const hasFilters = Boolean(filters.search || filters.status || filters.type);
+
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       <Input
@@ -57,6 +65,12 @@ export function CampaignFilters({ filters, onChange }: CampaignFiltersProps) {
           </option>
         ))}
       </Select>
+
+      {hasFilters ? (
+        <Button variant="ghost" size="sm" onClick={onClear}>
+          Limpar
+        </Button>
+      ) : null}
     </div>
   );
 }

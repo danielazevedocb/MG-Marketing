@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ListSkeleton } from "@/components/list-skeleton";
 import type { SendHistoryDto } from "@/actions/history";
 import { CHANNEL_LABELS } from "@/schemas/campaign";
 import { SEND_STATUS_LABELS } from "@/schemas/history";
@@ -47,9 +48,7 @@ export function SendHistoryList({
   }
 
   if (isLoading && items.length === 0) {
-    return (
-      <p className="text-muted-foreground text-sm">Carregando histórico...</p>
-    );
+    return <ListSkeleton rows={5} />;
   }
 
   if (items.length === 0) {

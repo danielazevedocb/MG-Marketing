@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
@@ -110,7 +111,9 @@ export function CampaignWizard({
     initialCampaign?.wizardStep ?? "criar",
   );
   const [serverError, setServerError] = useState<string | null>(null);
-  const [autosaveMessage, setAutosaveMessage] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
+    "idle",
+  );
 
   const form = useForm<CampaignWizardStateInput>({
     defaultValues: buildDefaultValues(initialCampaign),
@@ -164,12 +167,13 @@ export function CampaignWizard({
     enabled: Boolean(campaignId),
     delay: 1500,
     onSave: persistDraft,
+    onSaving: () => setSaveStatus("saving"),
     onSuccess: () => {
-      setAutosaveMessage("Rascunho salvo");
-      toast.success("Rascunho salvo automaticamente");
-      setTimeout(() => setAutosaveMessage(null), 2000);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 3000);
     },
     onError: () => {
+      setSaveStatus("idle");
       toast.error("Não foi possível salvar o rascunho.");
     },
   });
@@ -283,7 +287,8 @@ export function CampaignWizard({
           return;
         }
         setCampaignId(created.data.id);
-        setAutosaveMessage("Rascunho criado");
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 3000);
         return;
       }
 
@@ -295,7 +300,8 @@ export function CampaignWizard({
         setServerError(result.error);
         return;
       }
-      setAutosaveMessage("Rascunho salvo");
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 3000);
     });
   }
 
@@ -349,9 +355,15 @@ export function CampaignWizard({
                 {stepMeta.description}
               </p>
             </div>
-            {autosaveMessage ? (
-              <span className="text-muted-foreground text-sm">
-                {autosaveMessage}
+            {saveStatus === "saving" ? (
+              <span className="text-muted-foreground flex items-center gap-1.5 text-sm">
+                <Loader2 className="size-3 animate-spin" />
+                Salvando...
+              </span>
+            ) : saveStatus === "saved" ? (
+              <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
+                <CheckCircle2 className="size-3" />
+                Salvo
               </span>
             ) : null}
           </div>

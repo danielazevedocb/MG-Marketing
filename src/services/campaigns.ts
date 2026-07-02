@@ -89,7 +89,9 @@ export const INCOMPLETE_CAMPAIGN_CONTENT_MESSAGE =
   "Conteúdo da campanha incompleto: título e texto são obrigatórios para envio.";
 
 /** Revalida o conteúdo com o schema estrito antes de enviar/agendar. */
-export function assertCampaignContentComplete(content: CampaignFieldInput): void {
+export function assertCampaignContentComplete(
+  content: CampaignFieldInput,
+): void {
   const result = campaignFieldSchema.safeParse(content);
   if (!result.success) {
     throw new CampaignValidationError(INCOMPLETE_CAMPAIGN_CONTENT_MESSAGE);
@@ -105,7 +107,9 @@ function parseValidade(value: string | undefined): Date | null {
   return date;
 }
 
-function fieldToDto(field: CampaignWithRelations["field"]): CampaignFieldDto | null {
+function fieldToDto(
+  field: CampaignWithRelations["field"],
+): CampaignFieldDto | null {
   if (!field) return null;
 
   return {
@@ -246,10 +250,7 @@ function wizardStateToCampaignData(
 }
 
 export class CampaignService {
-  async createDraft(
-    nome: string,
-    actorId: string,
-  ): Promise<CampaignDto> {
+  async createDraft(nome: string, actorId: string): Promise<CampaignDto> {
     const parsed = campaignWizardStateSchema
       .pick({ nome: true })
       .safeParse({ nome });
@@ -524,6 +525,57 @@ export class CampaignService {
     return toCampaignDto(campaign);
   }
 
+  async resendCampaign(id: string, actorId: string): Promise<CampaignDto> {
+    const existing = await findCampaignById(id);
+    if (!existing) {
+      throw new CampaignValidationError("Campanha não encontrada");
+    }
+    if (existing.status !== CampaignStatus.sent) {
+      throw new CampaignValidationError(
+        "Somente campanhas enviadas podem ser reenviadas",
+      );
+    }
+
+    const field = existing.field;
+    const copy = await createCampaign({
+      nome: existing.nome,
+      type: existing.type,
+      status: CampaignStatus.draft,
+      channel: existing.channel,
+      channels: [...existing.channels],
+      templateId: existing.templateId,
+      creatorId: actorId,
+      wizardStep: existing.wizardStep,
+      recipientContactIds: [...existing.recipientContactIds],
+      recipientGroupIds: [...existing.recipientGroupIds],
+      field: field
+        ? {
+            titulo: field.titulo,
+            subtitulo: field.subtitulo,
+            texto: field.texto,
+            banner: field.banner,
+            imagem: field.imagem,
+            link: field.link,
+            botao: field.botao,
+            preco: field.preco,
+            desconto: field.desconto,
+            validade: field.validade,
+            observacoes: field.observacoes,
+          }
+        : undefined,
+    });
+
+    await auditLog({
+      actorId,
+      action: "campaign.resent",
+      entity: "Campaign",
+      entityId: copy.id,
+      payload: { sourceId: id },
+    });
+
+    return toCampaignDto(copy);
+  }
+
   async getCampaignById(id: string): Promise<CampaignDto | null> {
     const campaign = await findCampaignById(id);
     return campaign ? toCampaignDto(campaign) : null;
@@ -588,7 +640,9 @@ export class CampaignService {
     }));
   }
 
-  async buildWizardState(campaign: CampaignWithRelations): Promise<CampaignWizardStateInput> {
+  async buildWizardState(
+    campaign: CampaignWithRelations,
+  ): Promise<CampaignWizardStateInput> {
     return {
       nome: campaign.nome,
       type: campaign.type,
