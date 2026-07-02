@@ -103,11 +103,11 @@ export function CampaignList({
             key={campaign.id}
             className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
           >
-            <div className="space-y-1">
+            <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <Link
                   href={`/campaigns/${campaign.id}/edit`}
-                  className="font-medium hover:underline"
+                  className="min-w-0 break-words font-medium hover:underline"
                 >
                   {campaign.nome}
                 </Link>

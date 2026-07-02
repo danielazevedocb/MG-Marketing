@@ -118,7 +118,7 @@ export function TemplateList({
       </div>
 
       <div className="overflow-hidden rounded-lg border">
-        <table className="w-full text-sm">
+        <table className="w-full table-fixed text-sm">
           <thead className="bg-muted/40 border-b">
             <tr className="text-muted-foreground text-left">
               <th className="px-4 py-3 font-medium">Nome</th>
@@ -164,8 +164,8 @@ export function TemplateList({
             ) : (
               templates.map((template) => (
                 <tr key={template.id} className="border-b last:border-b-0">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{template.nome}</div>
+                  <td className="max-w-0 px-4 py-3">
+                    <div className="min-w-0 break-words font-medium">{template.nome}</div>
                     <div className="text-muted-foreground mt-0.5 text-xs md:hidden">
                       {TEMPLATE_TYPE_LABELS[template.type]}
                     </div>
@@ -259,10 +259,12 @@ export function TemplateList({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Excluir template</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="wrap-anywhere">
               Tem certeza que deseja excluir{" "}
-              <strong>{deleteTarget?.nome}</strong>? Esta ação não pode ser
-              desfeita.
+              <span className="font-semibold text-foreground wrap-anywhere">
+                {deleteTarget?.nome}
+              </span>
+              ? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
