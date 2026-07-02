@@ -100,7 +100,9 @@ export async function updateContact(
   if (data.status !== undefined) updateData.status = data.status;
 
   if (data.groupIds !== undefined) {
-    updateData.groups = { set: data.groupIds.map((groupId) => ({ id: groupId })) };
+    updateData.groups = {
+      set: data.groupIds.map((groupId) => ({ id: groupId })),
+    };
   }
 
   if (data.tagIds !== undefined) {
@@ -149,14 +151,24 @@ export async function listContacts(
 export async function createContactsBatch(
   contacts: CreateContactData[],
 ): Promise<ContactWithRelations[]> {
-  const created: ContactWithRelations[] = [];
+  if (contacts.length === 0) return [];
 
-  for (const contact of contacts) {
-    const item = await createContact(contact);
-    created.push(item);
-  }
-
-  return created;
+  return prisma.$transaction(
+    contacts.map((contact) =>
+      prisma.contact.create({
+        data: {
+          nome: contact.nome,
+          empresa: contact.empresa,
+          telefone: contact.telefone,
+          email: contact.email,
+          status: contact.status ?? ContactStatus.Ativo,
+          groups: relationConnect(contact.groupIds),
+          tags: relationConnect(contact.tagIds),
+        },
+        include: contactInclude,
+      }),
+    ),
+  );
 }
 
 export async function findContactIdsByGroupIds(

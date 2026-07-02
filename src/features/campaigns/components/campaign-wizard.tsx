@@ -54,9 +54,7 @@ type CampaignWizardProps = {
   canSend: boolean;
 };
 
-function buildDefaultValues(
-  campaign?: CampaignDto,
-): CampaignWizardStateInput {
+function buildDefaultValues(campaign?: CampaignDto): CampaignWizardStateInput {
   if (!campaign) {
     return {
       nome: "",
@@ -187,7 +185,9 @@ export function CampaignWizard({
       case "conteudo":
         return { field: values.field };
       case "imagem":
-        return { field: { banner: values.field.banner, imagem: values.field.imagem } };
+        return {
+          field: { banner: values.field.banner, imagem: values.field.imagem },
+        };
       case "contatos":
         return { recipientContactIds: values.recipientContactIds ?? [] };
       case "grupos":
@@ -481,7 +481,9 @@ export function CampaignWizard({
                               onChange={(event) => {
                                 const next = event.target.checked
                                   ? [...field.value, contact.id]
-                                  : field.value.filter((id) => id !== contact.id);
+                                  : field.value.filter(
+                                      (id) => id !== contact.id,
+                                    );
                                 field.onChange(next);
                               }}
                             />
@@ -551,24 +553,37 @@ export function CampaignWizard({
                   <div className="flex flex-wrap gap-3">
                     {Object.entries(CHANNEL_LABELS).map(([value, label]) => {
                       const channel = value as Channel;
+                      const isWhatsApp = channel === Channel.WhatsApp;
                       const checked = field.value.includes(channel);
                       return (
                         <label
                           key={value}
-                          className="border-input flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm"
+                          className={`border-input flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${isWhatsApp ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+                          title={
+                            isWhatsApp
+                              ? "Integração em desenvolvimento"
+                              : undefined
+                          }
                         >
                           <input
                             type="checkbox"
                             checked={checked}
-                            disabled={isPending}
+                            disabled={isPending || isWhatsApp}
                             onChange={(event) => {
                               const next = event.target.checked
                                 ? [...field.value, channel]
-                                : field.value.filter((item) => item !== channel);
+                                : field.value.filter(
+                                    (item) => item !== channel,
+                                  );
                               field.onChange(next);
                             }}
                           />
                           {label}
+                          {isWhatsApp ? (
+                            <span className="text-muted-foreground text-xs">
+                              (em breve)
+                            </span>
+                          ) : null}
                         </label>
                       );
                     })}

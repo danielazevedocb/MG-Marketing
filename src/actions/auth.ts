@@ -2,10 +2,12 @@
 
 // Server Actions de autenticação (login/logout). A verificação real ocorre no
 // servidor via Auth.js; a UI apenas dispara estas ações e reflete o resultado.
+import { headers } from "next/headers";
 import { AuthError } from "next-auth";
 
 import { DEFAULT_LOGIN_REDIRECT } from "@/lib/auth.config";
 import { signIn, signOut } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { loginSchema, type LoginInput } from "@/schemas/auth";
 
 export type LoginActionResult = { error?: string };
@@ -15,6 +17,17 @@ export type LoginActionResult = { error?: string };
 export async function loginAction(
   values: LoginInput,
 ): Promise<LoginActionResult> {
+  const headersList = await headers();
+  const ip =
+    headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    headersList.get("x-real-ip") ??
+    "unknown";
+
+  const rateCheck = checkRateLimit(`login:${ip}`);
+  if (!rateCheck.allowed) {
+    return { error: "Muitas tentativas. Tente novamente em alguns instantes." };
+  }
+
   const parsed = loginSchema.safeParse(values);
   if (!parsed.success) {
     return { error: "Dados inválidos." };

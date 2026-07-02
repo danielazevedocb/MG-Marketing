@@ -37,6 +37,9 @@ export class SmtpDriver implements EmailProviderDriver {
           user: credentials.user,
           pass: credentials.password,
         },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 5000,
       });
 
       await transporter.verify();
@@ -65,6 +68,9 @@ export class SmtpDriver implements EmailProviderDriver {
           user: credentials.user,
           pass: credentials.password,
         },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 10000,
       });
 
       const info = await transporter.sendMail({

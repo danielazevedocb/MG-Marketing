@@ -190,6 +190,25 @@ export async function findDueScheduledCampaigns(
 }
 
 /**
+ * Reivindica atomicamente uma campanha rascunho para envio imediato.
+ * Transiciona `draft` → `sent` de forma atômica para evitar envios duplicados
+ * em requisições concorrentes. Retorna false se a campanha já foi enviada.
+ */
+export async function claimDraftCampaignForDispatch(
+  id: string,
+): Promise<boolean> {
+  const result = await prisma.campaign.updateMany({
+    where: { id, status: CampaignStatus.draft },
+    data: {
+      status: CampaignStatus.sent,
+      sentAt: new Date(),
+      wizardStep: "enviar",
+    },
+  });
+  return result.count === 1;
+}
+
+/**
  * Reivindica atomicamente uma campanha agendada vencida para envio.
  * Transiciona `scheduled` → `draft` para que o módulo `sending` processe o disparo.
  * Retorna false se outra execução já reivindicou a campanha (idempotência).

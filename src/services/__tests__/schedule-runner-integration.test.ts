@@ -9,8 +9,8 @@ import {
 
 const findDueScheduledCampaignsMock = vi.fn();
 const claimScheduledCampaignMock = vi.fn();
+const claimDraftCampaignForDispatchMock = vi.fn();
 const createSendHistoryMock = vi.fn();
-const updateCampaignMock = vi.fn();
 const findCampaignByIdMock = vi.fn();
 const findContactsByIdsMock = vi.fn();
 const resolveRecipientContactIdsMock = vi.fn();
@@ -20,8 +20,9 @@ vi.mock("@/repositories/campaign", () => ({
     findDueScheduledCampaignsMock(...args),
   claimScheduledCampaign: (...args: unknown[]) =>
     claimScheduledCampaignMock(...args),
+  claimDraftCampaignForDispatch: (...args: unknown[]) =>
+    claimDraftCampaignForDispatchMock(...args),
   findCampaignById: (...args: unknown[]) => findCampaignByIdMock(...args),
-  updateCampaign: (...args: unknown[]) => updateCampaignMock(...args),
 }));
 
 vi.mock("@/repositories/contact", () => ({
@@ -113,16 +114,12 @@ describe("Integração runner + sending", () => {
       },
     ]);
     createSendHistoryMock.mockResolvedValue({});
-    updateCampaignMock.mockResolvedValue({
-      ...baseCampaign,
-      status: CampaignStatus.sent,
-    });
+    claimDraftCampaignForDispatchMock.mockResolvedValue(true);
   });
 
   it("registra resultado da execução em SendHistory", async () => {
     const dispatchService = new ChannelDispatchService({
       recordHistory: createSendHistoryMock,
-      updateCampaignStatus: updateCampaignMock,
     });
 
     const runner = new ScheduleRunnerService({
@@ -142,9 +139,8 @@ describe("Integração runner + sending", () => {
         status: SendStatus.Enviado,
       }),
     );
-    expect(updateCampaignMock).toHaveBeenCalledWith(
+    expect(claimDraftCampaignForDispatchMock).toHaveBeenCalledWith(
       "campaign-1",
-      expect.objectContaining({ status: CampaignStatus.sent }),
     );
   });
 });

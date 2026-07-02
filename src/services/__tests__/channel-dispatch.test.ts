@@ -11,7 +11,7 @@ import { CampaignValidationError } from "@/lib/campaign-errors";
 import { NoActiveEmailProviderError } from "@/lib/sending-errors";
 
 const findCampaignByIdMock = vi.fn();
-const updateCampaignMock = vi.fn();
+const claimDraftCampaignForDispatchMock = vi.fn();
 const findContactsByIdsMock = vi.fn();
 const createSendHistoryMock = vi.fn();
 const createAuditLogMock = vi.fn();
@@ -21,7 +21,8 @@ const sendCampaignEmailMock = vi.fn();
 
 vi.mock("@/repositories/campaign", () => ({
   findCampaignById: (...args: unknown[]) => findCampaignByIdMock(...args),
-  updateCampaign: (...args: unknown[]) => updateCampaignMock(...args),
+  claimDraftCampaignForDispatch: (...args: unknown[]) =>
+    claimDraftCampaignForDispatchMock(...args),
 }));
 
 vi.mock("@/repositories/contact", () => ({
@@ -125,17 +126,16 @@ describe("ChannelDispatchService", () => {
       getActiveProvider: getActiveEmailProviderContextMock,
       sendEmail: sendCampaignEmailMock,
       recordHistory: createSendHistoryMock,
-      updateCampaignStatus: updateCampaignMock,
     });
 
     findCampaignByIdMock.mockResolvedValue(baseCampaign);
-    resolveRecipientContactIdsMock.mockResolvedValue(["contact-1", "contact-2"]);
+    claimDraftCampaignForDispatchMock.mockResolvedValue(true);
+    resolveRecipientContactIdsMock.mockResolvedValue([
+      "contact-1",
+      "contact-2",
+    ]);
     findContactsByIdsMock.mockResolvedValue(contacts);
     createSendHistoryMock.mockResolvedValue({});
-    updateCampaignMock.mockResolvedValue({
-      ...baseCampaign,
-      status: CampaignStatus.sent,
-    });
     createAuditLogMock.mockResolvedValue({});
     getActiveEmailProviderContextMock.mockResolvedValue({
       provider: ProviderType.SMTP,
@@ -170,7 +170,8 @@ describe("ChannelDispatchService", () => {
     expect(
       createSendHistoryMock.mock.calls.some(
         ([entry]) =>
-          entry.channel === Channel.Email && entry.status === SendStatus.Enviado,
+          entry.channel === Channel.Email &&
+          entry.status === SendStatus.Enviado,
       ),
     ).toBe(true);
     expect(result.summary.success).toBe(2);
@@ -210,16 +211,21 @@ describe("ChannelDispatchService", () => {
     expect(sendCampaignEmailMock).toHaveBeenCalledTimes(2);
   });
 
-  it("atualiza status da campanha para sent ao concluir", async () => {
+  it("reivindica a campanha atomicamente antes de enviar", async () => {
     await service.dispatchCampaign("campaign-1", "user-1");
 
-    expect(updateCampaignMock).toHaveBeenCalledWith(
+    expect(claimDraftCampaignForDispatchMock).toHaveBeenCalledWith(
       "campaign-1",
-      expect.objectContaining({
-        status: CampaignStatus.sent,
-        wizardStep: "enviar",
-      }),
     );
+  });
+
+  it("bloqueia envio concorrente quando claim retorna false", async () => {
+    claimDraftCampaignForDispatchMock.mockResolvedValue(false);
+
+    await expect(
+      service.dispatchCampaign("campaign-1", "user-1"),
+    ).rejects.toBeInstanceOf(CampaignValidationError);
+    expect(sendCampaignEmailMock).not.toHaveBeenCalled();
   });
 
   it("bloqueia envio quando o conteúdo está incompleto (título/texto vazios)", async () => {
@@ -240,7 +246,7 @@ describe("ChannelDispatchService", () => {
     ).rejects.toThrow("Conteúdo da campanha incompleto");
     expect(sendCampaignEmailMock).not.toHaveBeenCalled();
     expect(createSendHistoryMock).not.toHaveBeenCalled();
-    expect(updateCampaignMock).not.toHaveBeenCalled();
+    expect(claimDraftCampaignForDispatchMock).not.toHaveBeenCalled();
   });
 
   it("registra falha de email quando não há provedor ativo no canal ambos", async () => {
@@ -248,9 +254,13 @@ describe("ChannelDispatchService", () => {
 
     const result = await service.dispatchCampaign("campaign-1", "user-1");
 
-    const emailItems = result.items.filter((item) => item.channel === Channel.Email);
+    const emailItems = result.items.filter(
+      (item) => item.channel === Channel.Email,
+    );
     expect(emailItems).toHaveLength(2);
-    expect(emailItems.every((item) => item.status === SendStatus.Falha)).toBe(true);
+    expect(emailItems.every((item) => item.status === SendStatus.Falha)).toBe(
+      true,
+    );
     expect(
       emailItems.every((item) =>
         item.returnMessage?.includes("provedor de email ativo"),
@@ -259,7 +269,8 @@ describe("ChannelDispatchService", () => {
     expect(
       result.items.some(
         (item) =>
-          item.channel === Channel.WhatsApp && item.status === SendStatus.Enviado,
+          item.channel === Channel.WhatsApp &&
+          item.status === SendStatus.Enviado,
       ),
     ).toBe(true);
   });

@@ -1,17 +1,19 @@
 // Orquestrador de envio por canal — WhatsApp, Email ou ambos.
-import {
-  CampaignStatus,
-  Channel,
-  SendStatus,
-} from "@/generated/prisma/enums";
+import { Channel, SendStatus } from "@/generated/prisma/enums";
 import { CampaignValidationError } from "@/lib/campaign-errors";
 import { NoActiveEmailProviderError } from "@/lib/sending-errors";
 import { auditLog } from "@/services/audit-log";
-import { findCampaignById, updateCampaign } from "@/repositories/campaign";
+import {
+  claimDraftCampaignForDispatch,
+  findCampaignById,
+} from "@/repositories/campaign";
 import { findContactsByIds } from "@/repositories/contact";
 import { createSendHistory } from "@/repositories/send-history";
 import type { CampaignFieldInput } from "@/schemas/campaign";
-import { assertCampaignContentComplete, fieldToInput } from "@/services/campaigns";
+import {
+  assertCampaignContentComplete,
+  fieldToInput,
+} from "@/services/campaigns";
 import {
   getActiveEmailProviderContext,
   sendCampaignEmail,
@@ -97,7 +99,6 @@ export class ChannelDispatchService {
       getActiveProvider?: typeof getActiveEmailProviderContext;
       sendEmail?: typeof sendCampaignEmail;
       recordHistory?: typeof createSendHistory;
-      updateCampaignStatus?: typeof updateCampaign;
     } = {},
   ) {}
 
@@ -108,12 +109,6 @@ export class ChannelDispatchService {
     const campaign = await findCampaignById(campaignId);
     if (!campaign) {
       throw new CampaignValidationError("Campanha não encontrada");
-    }
-
-    if (campaign.status !== CampaignStatus.draft) {
-      throw new CampaignValidationError(
-        "Apenas campanhas em rascunho podem ser enviadas agora",
-      );
     }
 
     const channels = campaign.channels;
@@ -154,9 +149,7 @@ export class ChannelDispatchService {
       this.deps.getActiveProvider ?? getActiveEmailProviderContext;
     const sendEmail = this.deps.sendEmail ?? sendCampaignEmail;
     const historyWriter = this.deps.recordHistory ?? createSendHistory;
-    const updateStatus = this.deps.updateCampaignStatus ?? updateCampaign;
 
-    const items: DispatchResultItem[] = [];
     const includesEmail = channels.includes(Channel.Email);
     const includesWhatsApp = channels.includes(Channel.WhatsApp);
 
@@ -167,6 +160,16 @@ export class ChannelDispatchService {
         throw new NoActiveEmailProviderError();
       }
     }
+
+    // Claim atômico: transiciona draft → sent; aborta se outra requisição concurrent chegou primeiro.
+    const claimed = await claimDraftCampaignForDispatch(campaignId);
+    if (!claimed) {
+      throw new CampaignValidationError(
+        "Apenas campanhas em rascunho podem ser enviadas agora",
+      );
+    }
+
+    const items: DispatchResultItem[] = [];
 
     if (includesWhatsApp) {
       for (const recipient of recipients) {
@@ -258,7 +261,9 @@ export class ChannelDispatchService {
             emailProviderContext,
           );
 
-          const status = sendResult.success ? SendStatus.Enviado : SendStatus.Falha;
+          const status = sendResult.success
+            ? SendStatus.Enviado
+            : SendStatus.Falha;
           const returnMessage = sendResult.messageId
             ? `${sendResult.message}${sendResult.messageId ? ` (id: ${sendResult.messageId})` : ""}`
             : sendResult.message;
@@ -286,27 +291,25 @@ export class ChannelDispatchService {
       }
     }
 
-    const sentAt = new Date();
-    await updateStatus(campaignId, {
-      status: CampaignStatus.sent,
-      sentAt,
-      wizardStep: "enviar",
-    });
+    const success = items.filter(
+      (item) => item.status === SendStatus.Enviado,
+    ).length;
+    const failure = items.length - success;
 
     await auditLog({
       actorId,
-      action: "campaign.sent",
+      action:
+        failure === items.length ? "campaign.send.failed" : "campaign.sent",
       entity: "Campaign",
       entityId: campaignId,
       payload: {
         channels,
         recipients: recipients.length,
-        results: items.length,
+        total: items.length,
+        success,
+        failure,
       },
     });
-
-    const success = items.filter((item) => item.status === SendStatus.Enviado).length;
-    const failure = items.length - success;
 
     return {
       campaignId,

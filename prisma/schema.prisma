@@ -331,6 +331,8 @@ model SendHistory {
   @@index([channel])
   @@index([status])
   @@index([sentAt])
+  @@index([sentAt, status])
+  @@index([campaignId, sentAt])
 }
 
 model AuditLog {

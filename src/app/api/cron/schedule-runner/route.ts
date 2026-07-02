@@ -8,10 +8,7 @@ function isAuthorized(request: Request): boolean {
   if (!cronSecret) return false;
 
   const authHeader = request.headers.get("authorization");
-  if (authHeader === `Bearer ${cronSecret}`) return true;
-
-  const headerSecret = request.headers.get("x-cron-secret");
-  return headerSecret === cronSecret;
+  return authHeader === `Bearer ${cronSecret}`;
 }
 
 async function handleRun() {
