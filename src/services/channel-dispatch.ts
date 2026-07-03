@@ -136,6 +136,7 @@ export class ChannelDispatchService {
             texto: campaign.field.texto,
             banner: campaign.field.banner,
             imagem: campaign.field.imagem,
+            imagens: campaign.field.imagens ?? [],
             link: campaign.field.link,
             botao: campaign.field.botao,
             preco: campaign.field.preco,

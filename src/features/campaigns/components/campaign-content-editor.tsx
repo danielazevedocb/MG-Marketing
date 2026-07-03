@@ -1,8 +1,11 @@
 "use client";
 
+import { X } from "lucide-react";
+import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { FileDropzone } from "@/components/forms/file-dropzone";
+import { Button } from "@/components/ui/button";
 import {
   FormControl,
   FormDescription,
@@ -184,6 +187,106 @@ type CampaignImageEditorProps = {
   disabled?: boolean;
 };
 
+const MAX_GALLERY_IMAGES = 8;
+
+function GalleryField({ disabled }: { disabled: boolean }) {
+  const form = useFormContext<CampaignWizardStateInput>();
+  const [manualUrl, setManualUrl] = useState("");
+
+  return (
+    <FormField
+      control={form.control}
+      name="field.imagens"
+      render={({ field }) => {
+        const images = field.value ?? [];
+        const isFull = images.length >= MAX_GALLERY_IMAGES;
+
+        const addUrl = (url: string) => {
+          const trimmed = url.trim();
+          if (!trimmed || isFull) return;
+          field.onChange([...images, trimmed]);
+        };
+
+        const removeAt = (index: number) => {
+          field.onChange(images.filter((_, i) => i !== index));
+        };
+
+        return (
+          <FormItem className="min-w-0 lg:col-span-2">
+            <FormLabel>
+              Galeria da página pública ({images.length}/{MAX_GALLERY_IMAGES})
+            </FormLabel>
+            <FormControl>
+              <div className="min-w-0 space-y-3">
+                <FileDropzone
+                  assetType={FileAssetType.imagem}
+                  className="w-full min-w-0"
+                  disabled={disabled || isFull}
+                  label="Arraste fotos ou clique para adicionar à galeria"
+                  description={
+                    isFull
+                      ? "Limite de imagens atingido. Remova uma para adicionar outra."
+                      : "As fotos aparecem em grade na página pública da campanha."
+                  }
+                  onUploadComplete={(asset) => addUrl(asset.url)}
+                />
+
+                <div className="flex gap-2">
+                  <Input
+                    disabled={disabled || isFull}
+                    placeholder="Ou cole a URL da imagem"
+                    value={manualUrl}
+                    onChange={(event) => setManualUrl(event.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={disabled || isFull || !manualUrl.trim()}
+                    onClick={() => {
+                      addUrl(manualUrl);
+                      setManualUrl("");
+                    }}
+                  >
+                    Adicionar imagem
+                  </Button>
+                </div>
+
+                {images.length > 0 ? (
+                  <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+                    {images.map((url, index) => (
+                      <li
+                        key={`${url}-${index}`}
+                        className="group bg-muted relative aspect-square overflow-hidden rounded-md border"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={url}
+                          alt={`Imagem ${index + 1} da galeria`}
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => removeAt(index)}
+                          aria-label={`Remover imagem ${index + 1} da galeria`}
+                          className="bg-background/80 text-foreground hover:bg-destructive hover:text-destructive-foreground absolute top-1 right-1 rounded-full p-1 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        );
+      }}
+    />
+  );
+}
+
 export function CampaignImageEditor({
   disabled = false,
 }: CampaignImageEditorProps) {
@@ -246,6 +349,8 @@ export function CampaignImageEditor({
           </FormItem>
         )}
       />
+
+      <GalleryField disabled={disabled} />
     </div>
   );
 }

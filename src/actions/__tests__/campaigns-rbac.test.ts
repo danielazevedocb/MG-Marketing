@@ -49,6 +49,7 @@ const draftState = {
     texto: "Texto",
     banner: "",
     imagem: "",
+    imagens: [],
     link: "",
     botao: "",
     preco: "",
@@ -94,9 +95,13 @@ describe("RBAC das actions de campanhas", () => {
   it("Visualizador não pode avançar wizard (403)", async () => {
     authMock.mockResolvedValue(sessionFor(Role.Visualizador));
 
-    const result = await advanceCampaignWizardStepAction("campaign-1", "criar", {
-      nome: "Teste",
-    });
+    const result = await advanceCampaignWizardStepAction(
+      "campaign-1",
+      "criar",
+      {
+        nome: "Teste",
+      },
+    );
 
     expect(result.success).toBe(false);
     if (!result.success) {

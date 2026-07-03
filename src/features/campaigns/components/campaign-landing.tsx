@@ -1,6 +1,8 @@
-// Landing page pública da campanha — imagem de um lado, conteúdo do outro.
-// Server Component puro: sem estado, sem HTTP; recebe o view-model pronto.
+// Landing page pública da campanha — hero no topo, imagem ao lado do texto e
+// galeria em grade. Server Component; imagens usam ilhas client para fallback.
 import { Badge } from "@/components/ui/badge";
+import { LandingGallery } from "@/features/campaigns/components/landing-gallery";
+import { LandingImage } from "@/features/campaigns/components/landing-image";
 import type { LandingViewModel } from "@/features/campaigns/lib/landing-model";
 
 type CampaignLandingProps = {
@@ -9,24 +11,28 @@ type CampaignLandingProps = {
 
 export function CampaignLanding({ model }: CampaignLandingProps) {
   return (
-    <article className="mx-auto w-full max-w-5xl px-6 py-12 sm:py-16">
+    <article className="mx-auto w-full max-w-5xl space-y-10 px-6 py-12 sm:py-16">
+      {model.heroUrl ? (
+        <LandingImage
+          src={model.heroUrl}
+          alt={model.titulo}
+          className="bg-muted aspect-video w-full rounded-xl border object-cover"
+        />
+      ) : null}
+
       <div
         className={
-          model.imagemUrl
+          model.lateralUrl
             ? "grid items-center gap-10 md:grid-cols-2"
             : "mx-auto max-w-2xl"
         }
       >
-        {model.imagemUrl ? (
-          <div className="bg-muted overflow-hidden rounded-xl border">
-            {/* Imagem externa (R2/URL do usuário) — next/image exigiria allowlist de domínios. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={model.imagemUrl}
-              alt={model.titulo}
-              className="h-auto w-full object-cover"
-            />
-          </div>
+        {model.lateralUrl ? (
+          <LandingImage
+            src={model.lateralUrl}
+            alt={model.titulo}
+            className="bg-muted aspect-4/3 w-full rounded-xl border object-cover"
+          />
         ) : null}
 
         <div className="space-y-5">
@@ -64,6 +70,8 @@ export function CampaignLanding({ model }: CampaignLandingProps) {
           ) : null}
         </div>
       </div>
+
+      <LandingGallery images={model.galeria} titulo={model.titulo} />
     </article>
   );
 }

@@ -10,6 +10,7 @@ const baseField: CampaignFieldDto = {
   texto: "Primeiro parágrafo.\n\nSegundo parágrafo.",
   banner: "https://cdn.example.com/banner.png",
   imagem: null,
+  imagens: [],
   link: null,
   botao: null,
   preco: "R$ 99,90",
@@ -19,7 +20,7 @@ const baseField: CampaignFieldDto = {
 };
 
 describe("buildLandingViewModel", () => {
-  it("monta o modelo completo com parágrafos, detalhes e imagem", () => {
+  it("monta o modelo completo com parágrafos, detalhes e hero", () => {
     const model = buildLandingViewModel(CampaignType.Novidade, baseField);
 
     expect(model.typeLabel).toBe("Novidade");
@@ -29,7 +30,9 @@ describe("buildLandingViewModel", () => {
       "Primeiro parágrafo.",
       "Segundo parágrafo.",
     ]);
-    expect(model.imagemUrl).toBe("https://cdn.example.com/banner.png");
+    expect(model.heroUrl).toBe("https://cdn.example.com/banner.png");
+    expect(model.lateralUrl).toBeNull();
+    expect(model.galeria).toEqual([]);
     expect(model.detalhes).toEqual([
       { label: "Preço", value: "R$ 99,90" },
       { label: "Desconto", value: "10%" },
@@ -41,24 +44,90 @@ describe("buildLandingViewModel", () => {
     expect(model.observacoes).toBe("Válido enquanto durar o estoque.");
   });
 
-  it("usa imagem como fallback quando banner está ausente", () => {
+  it("banner e imagem juntos viram hero + lateral", () => {
+    const model = buildLandingViewModel(CampaignType.Geral, {
+      ...baseField,
+      imagem: "https://cdn.example.com/foto.jpg",
+    });
+
+    expect(model.heroUrl).toBe("https://cdn.example.com/banner.png");
+    expect(model.lateralUrl).toBe("https://cdn.example.com/foto.jpg");
+  });
+
+  it("campanha só com imagem mantém exibição via lateral", () => {
     const model = buildLandingViewModel(CampaignType.Geral, {
       ...baseField,
       banner: null,
       imagem: "https://cdn.example.com/foto.jpg",
     });
 
-    expect(model.imagemUrl).toBe("https://cdn.example.com/foto.jpg");
+    expect(model.heroUrl).toBeNull();
+    expect(model.lateralUrl).toBe("https://cdn.example.com/foto.jpg");
   });
 
-  it("rejeita URLs de imagem não http/https", () => {
+  it("lateral duplicada do hero é suprimida", () => {
+    const model = buildLandingViewModel(CampaignType.Geral, {
+      ...baseField,
+      imagem: baseField.banner,
+    });
+
+    expect(model.heroUrl).toBe("https://cdn.example.com/banner.png");
+    expect(model.lateralUrl).toBeNull();
+  });
+
+  it("galeria sanitiza URLs, remove duplicatas de hero/lateral e corta em 8", () => {
+    const validas = Array.from(
+      { length: 10 },
+      (_, i) => `https://cdn.example.com/g${i}.jpg`,
+    );
+    const model = buildLandingViewModel(CampaignType.Geral, {
+      ...baseField,
+      imagem: "https://cdn.example.com/foto.jpg",
+      imagens: [
+        "javascript:alert(1)",
+        baseField.banner!,
+        "https://cdn.example.com/foto.jpg",
+        ...validas,
+        validas[0]!,
+      ],
+    });
+
+    expect(model.galeria).toEqual(validas.slice(0, 8));
+  });
+
+  it("ogImageUrl segue fallback hero → lateral → galeria", () => {
+    const semHero = buildLandingViewModel(CampaignType.Geral, {
+      ...baseField,
+      banner: null,
+      imagem: "https://cdn.example.com/foto.jpg",
+    });
+    expect(semHero.ogImageUrl).toBe("https://cdn.example.com/foto.jpg");
+
+    const soGaleria = buildLandingViewModel(CampaignType.Geral, {
+      ...baseField,
+      banner: null,
+      imagem: null,
+      imagens: ["https://cdn.example.com/g1.jpg"],
+    });
+    expect(soGaleria.ogImageUrl).toBe("https://cdn.example.com/g1.jpg");
+
+    const semImagens = buildLandingViewModel(CampaignType.Geral, {
+      ...baseField,
+      banner: null,
+    });
+    expect(semImagens.ogImageUrl).toBeNull();
+  });
+
+  it("rejeita URLs de imagem não http/https no hero e lateral", () => {
     const model = buildLandingViewModel(CampaignType.Geral, {
       ...baseField,
       banner: "javascript:alert(1)",
       imagem: "data:text/html,<script>alert(1)</script>",
     });
 
-    expect(model.imagemUrl).toBeNull();
+    expect(model.heroUrl).toBeNull();
+    expect(model.lateralUrl).toBeNull();
+    expect(model.ogImageUrl).toBeNull();
   });
 
   it("lida com conteúdo mínimo sem quebrar", () => {
@@ -68,6 +137,7 @@ describe("buildLandingViewModel", () => {
       texto: null,
       banner: null,
       imagem: null,
+      imagens: [],
       link: null,
       botao: null,
       preco: null,
@@ -80,7 +150,9 @@ describe("buildLandingViewModel", () => {
     expect(model.subtitulo).toBeNull();
     expect(model.paragrafos).toEqual([]);
     expect(model.detalhes).toEqual([]);
-    expect(model.imagemUrl).toBeNull();
+    expect(model.heroUrl).toBeNull();
+    expect(model.lateralUrl).toBeNull();
+    expect(model.galeria).toEqual([]);
   });
 
   it("ignora validade inválida sem lançar erro", () => {

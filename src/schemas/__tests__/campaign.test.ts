@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import { CampaignType, Channel } from "@/generated/prisma/enums";
 import {
   campaignFieldSchema,
+  campaignImageStepSchema,
   campaignWizardStateSchema,
+  emptyFieldInput,
   getNextWizardStep,
   getPreviousWizardStep,
   validateWizardStep,
@@ -127,6 +129,64 @@ describe("campaignFieldSchema", () => {
     const result = campaignFieldSchema.safeParse({
       ...validField,
       desconto: "xyz",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("imagens ausente vira lista vazia (default)", () => {
+    const result = campaignFieldSchema.safeParse(validField);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.imagens).toEqual([]);
+    }
+  });
+
+  it("rejeita URL inválida na galeria", () => {
+    const result = campaignFieldSchema.safeParse({
+      ...validField,
+      imagens: ["nao-e-url"],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita galeria com mais de 8 imagens", () => {
+    const result = campaignFieldSchema.safeParse({
+      ...validField,
+      imagens: Array.from(
+        { length: 9 },
+        (_, i) => `https://cdn.example.com/g${i}.jpg`,
+      ),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("emptyFieldInput inclui galeria vazia", () => {
+    expect(emptyFieldInput().imagens).toEqual([]);
+  });
+});
+
+describe("campaignImageStepSchema", () => {
+  it("aceita banner, imagem e galeria válidos", () => {
+    const result = campaignImageStepSchema.safeParse({
+      field: {
+        banner: "https://cdn.example.com/banner.png",
+        imagem: "",
+        imagens: ["https://cdn.example.com/g1.jpg"],
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita galeria acima do limite na etapa imagem", () => {
+    const result = campaignImageStepSchema.safeParse({
+      field: {
+        banner: "",
+        imagem: "",
+        imagens: Array.from(
+          { length: 9 },
+          (_, i) => `https://cdn.example.com/g${i}.jpg`,
+        ),
+      },
     });
     expect(result.success).toBe(false);
   });

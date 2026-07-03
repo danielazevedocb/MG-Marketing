@@ -73,6 +73,10 @@ export const campaignFieldSchema = z.object({
     .max(5000, "Texto muito longo"),
   banner: optionalUrl,
   imagem: optionalUrl,
+  imagens: z
+    .array(z.string().trim().url("URL de imagem inválida"))
+    .max(8, "Máximo de 8 imagens na galeria")
+    .default([]),
   link: optionalUrl,
   botao: optionalShortText(80, "Texto do botão"),
   preco: optionalNumericField,
@@ -149,7 +153,11 @@ export const campaignContentStepSchema = z.object({
 });
 
 export const campaignImageStepSchema = z.object({
-  field: campaignFieldSchema.pick({ banner: true, imagem: true }),
+  field: campaignFieldSchema.pick({
+    banner: true,
+    imagem: true,
+    imagens: true,
+  }),
 });
 
 export const campaignContactsStepSchema = z.object({
@@ -327,6 +335,7 @@ export function emptyFieldInput(): CampaignFieldInput {
     texto: "",
     banner: "",
     imagem: "",
+    imagens: [],
     link: "",
     botao: "",
     preco: "",

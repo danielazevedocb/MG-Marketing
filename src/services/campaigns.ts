@@ -52,6 +52,7 @@ export type CampaignFieldDto = {
   texto: string | null;
   banner: string | null;
   imagem: string | null;
+  imagens: string[];
   link: string | null;
   botao: string | null;
   preco: string | null;
@@ -128,6 +129,7 @@ function fieldToDto(
     texto: field.texto,
     banner: field.banner,
     imagem: field.imagem,
+    imagens: field.imagens ?? [],
     link: field.link,
     botao: field.botao,
     preco: field.preco,
@@ -144,6 +146,7 @@ function fieldInputToData(input: CampaignFieldDraftInput): CampaignFieldData {
     texto: input.texto || null,
     banner: input.banner || null,
     imagem: input.imagem || null,
+    imagens: input.imagens ?? [],
     link: input.link || null,
     botao: input.botao || null,
     preco: input.preco || null,
@@ -166,6 +169,7 @@ function fieldToInput(field: CampaignFieldDto | null): CampaignFieldInput {
     texto: field.texto ?? "",
     banner: field.banner ?? "",
     imagem: field.imagem ?? "",
+    imagens: field.imagens ?? [],
     link: field.link ?? "",
     botao: field.botao ?? "",
     preco: field.preco ?? "",
@@ -188,6 +192,7 @@ export function templateContentToCampaignField(
     texto: content.corpo,
     banner: content.bannerUrl ?? "",
     imagem: "",
+    imagens: [],
     link: content.ctaUrl ?? "",
     botao: content.ctaTexto ?? "",
     preco: content.preco || content.precoOriginal || "",
@@ -566,6 +571,7 @@ export class CampaignService {
             texto: field.texto,
             banner: field.banner,
             imagem: field.imagem,
+            imagens: [...(field.imagens ?? [])],
             link: field.link,
             botao: field.botao,
             preco: field.preco,

@@ -21,6 +21,7 @@ export type CampaignFieldData = {
   texto?: string | null;
   banner?: string | null;
   imagem?: string | null;
+  imagens?: string[];
   link?: string | null;
   botao?: string | null;
   preco?: string | null;
@@ -96,6 +97,7 @@ function normalizeFieldData(field?: CampaignFieldData) {
     texto: field.texto ?? null,
     banner: field.banner ?? null,
     imagem: field.imagem ?? null,
+    imagens: field.imagens ?? [],
     link: field.link ?? null,
     botao: field.botao ?? null,
     preco: field.preco ?? null,
@@ -306,6 +308,7 @@ export async function duplicateCampaignRecord(
           texto: field.texto,
           banner: field.banner,
           imagem: field.imagem,
+          imagens: [...field.imagens],
           link: field.link,
           botao: field.botao,
           preco: field.preco,

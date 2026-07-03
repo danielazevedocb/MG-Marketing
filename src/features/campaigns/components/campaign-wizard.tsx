@@ -80,6 +80,7 @@ function buildDefaultValues(campaign?: CampaignDto): CampaignWizardStateInput {
       texto: campaign.field?.texto ?? "",
       banner: campaign.field?.banner ?? "",
       imagem: campaign.field?.imagem ?? "",
+      imagens: campaign.field?.imagens ?? [],
       link: campaign.field?.link ?? "",
       botao: campaign.field?.botao ?? "",
       preco: campaign.field?.preco ?? "",
@@ -190,7 +191,11 @@ export function CampaignWizard({
         return { field: values.field };
       case "imagem":
         return {
-          field: { banner: values.field.banner, imagem: values.field.imagem },
+          field: {
+            banner: values.field.banner,
+            imagem: values.field.imagem,
+            imagens: values.field.imagens ?? [],
+          },
         };
       case "contatos":
         return { recipientContactIds: values.recipientContactIds ?? [] };
@@ -252,6 +257,7 @@ export function CampaignWizard({
           texto: field.texto ?? "",
           banner: field.banner ?? "",
           imagem: field.imagem ?? "",
+          imagens: field.imagens ?? [],
           link: field.link ?? "",
           botao: field.botao ?? "",
           preco: field.preco ?? "",
