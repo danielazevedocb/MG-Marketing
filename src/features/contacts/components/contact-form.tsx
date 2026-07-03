@@ -24,11 +24,15 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { ContactStatus } from "@/generated/prisma/enums";
-import {
-  contactFormSchema,
-  type ContactFormInput,
-} from "@/schemas/contact";
+import { ContactStatus, ContactTipo } from "@/generated/prisma/enums";
+import { contactFormSchema, type ContactFormInput } from "@/schemas/contact";
+
+const CONTACT_TIPO_LABELS: Record<ContactTipo, string> = {
+  [ContactTipo.Lead]: "Lead",
+  [ContactTipo.Prospect]: "Prospect",
+  [ContactTipo.Cliente]: "Cliente",
+  [ContactTipo.Parceiro]: "Parceiro",
+};
 
 type ContactFormProps = {
   mode: "create" | "edit";
@@ -50,6 +54,7 @@ export function ContactForm({ mode, initialData }: ContactFormProps) {
       telefone: initialData?.telefone ?? "",
       email: initialData?.email ?? "",
       status: initialData?.status ?? ContactStatus.Ativo,
+      tipo: initialData?.tipo ?? ContactTipo.Lead,
       groupIds: initialData?.groupIds ?? [],
       tagIds: initialData?.tagIds ?? [],
     },
@@ -62,16 +67,20 @@ export function ContactForm({ mode, initialData }: ContactFormProps) {
         listTagsAction(),
       ]);
       if (groupsResult.success) {
-        setGroups(groupsResult.data.map((group) => ({
-          id: group.id,
-          nome: group.nome,
-        })));
+        setGroups(
+          groupsResult.data.map((group) => ({
+            id: group.id,
+            nome: group.nome,
+          })),
+        );
       }
       if (tagsResult.success) {
-        setTags(tagsResult.data.map((tag) => ({
-          id: tag.id,
-          nome: tag.nome,
-        })));
+        setTags(
+          tagsResult.data.map((tag) => ({
+            id: tag.id,
+            nome: tag.nome,
+          })),
+        );
       }
     }
 
@@ -110,7 +119,10 @@ export function ContactForm({ mode, initialData }: ContactFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid max-w-2xl gap-5">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="grid max-w-2xl gap-5"
+      >
         {serverError ? (
           <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm">
             {serverError}
@@ -124,7 +136,11 @@ export function ContactForm({ mode, initialData }: ContactFormProps) {
             <FormItem>
               <FormLabel>Empresa</FormLabel>
               <FormControl>
-                <Input placeholder="Nome da empresa" disabled={isPending} {...field} />
+                <Input
+                  placeholder="Nome da empresa"
+                  disabled={isPending}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -138,7 +154,13 @@ export function ContactForm({ mode, initialData }: ContactFormProps) {
             <FormItem>
               <FormLabel>Nome do contato</FormLabel>
               <FormControl>
-                <Input placeholder="Opcional" autoComplete="off" dir="ltr" disabled={isPending} {...field} />
+                <Input
+                  placeholder="Opcional"
+                  autoComplete="off"
+                  dir="ltr"
+                  disabled={isPending}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -153,7 +175,11 @@ export function ContactForm({ mode, initialData }: ContactFormProps) {
               <FormItem>
                 <FormLabel>Telefone</FormLabel>
                 <FormControl>
-                  <Input placeholder="(11) 99999-0000" disabled={isPending} {...field} />
+                  <Input
+                    placeholder="(11) 99999-0000"
+                    disabled={isPending}
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -180,28 +206,56 @@ export function ContactForm({ mode, initialData }: ContactFormProps) {
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Status</FormLabel>
-              <FormControl>
-                <Select
-                  value={field.value}
-                  onChange={(event) =>
-                    field.onChange(event.target.value as ContactStatus)
-                  }
-                  disabled={isPending}
-                >
-                  <option value={ContactStatus.Ativo}>Ativo</option>
-                  <option value={ContactStatus.Inativo}>Inativo</option>
-                </Select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Status</FormLabel>
+                <FormControl>
+                  <Select
+                    value={field.value}
+                    onChange={(event) =>
+                      field.onChange(event.target.value as ContactStatus)
+                    }
+                    disabled={isPending}
+                  >
+                    <option value={ContactStatus.Ativo}>Ativo</option>
+                    <option value={ContactStatus.Inativo}>Inativo</option>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="tipo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tipo</FormLabel>
+                <FormControl>
+                  <Select
+                    value={field.value}
+                    onChange={(event) =>
+                      field.onChange(event.target.value as ContactTipo)
+                    }
+                    disabled={isPending}
+                  >
+                    {Object.values(ContactTipo).map((tipo) => (
+                      <option key={tipo} value={tipo}>
+                        {CONTACT_TIPO_LABELS[tipo]}
+                      </option>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <fieldset className="space-y-3">
           <legend className="text-sm font-medium">Grupos</legend>

@@ -12,6 +12,8 @@ import { NoActiveEmailProviderError } from "@/lib/sending-errors";
 
 const findCampaignByIdMock = vi.fn();
 const claimDraftCampaignForDispatchMock = vi.fn();
+const setCampaignPublicSlugMock = vi.fn();
+const updateCampaignFieldLinkMock = vi.fn();
 const findContactsByIdsMock = vi.fn();
 const createSendHistoryMock = vi.fn();
 const createAuditLogMock = vi.fn();
@@ -23,6 +25,10 @@ vi.mock("@/repositories/campaign", () => ({
   findCampaignById: (...args: unknown[]) => findCampaignByIdMock(...args),
   claimDraftCampaignForDispatch: (...args: unknown[]) =>
     claimDraftCampaignForDispatchMock(...args),
+  setCampaignPublicSlug: (...args: unknown[]) =>
+    setCampaignPublicSlugMock(...args),
+  updateCampaignFieldLink: (...args: unknown[]) =>
+    updateCampaignFieldLinkMock(...args),
 }));
 
 vi.mock("@/repositories/contact", () => ({
@@ -68,6 +74,7 @@ const baseCampaign = {
   wizardStep: "enviar",
   recipientContactIds: ["contact-1", "contact-2"],
   recipientGroupIds: [],
+  publicSlug: null,
   createdAt: new Date(),
   updatedAt: new Date(),
   field: {
@@ -137,6 +144,8 @@ describe("ChannelDispatchService", () => {
     findContactsByIdsMock.mockResolvedValue(contacts);
     createSendHistoryMock.mockResolvedValue({});
     createAuditLogMock.mockResolvedValue({});
+    setCampaignPublicSlugMock.mockResolvedValue(undefined);
+    updateCampaignFieldLinkMock.mockResolvedValue(undefined);
     getActiveEmailProviderContextMock.mockResolvedValue({
       provider: ProviderType.SMTP,
       fromName: "MG",
@@ -247,6 +256,63 @@ describe("ChannelDispatchService", () => {
     expect(sendCampaignEmailMock).not.toHaveBeenCalled();
     expect(createSendHistoryMock).not.toHaveBeenCalled();
     expect(claimDraftCampaignForDispatchMock).not.toHaveBeenCalled();
+  });
+
+  it("gera landing page pública quando o link está vazio", async () => {
+    const result = await service.dispatchCampaign("campaign-1", "user-1");
+
+    expect(setCampaignPublicSlugMock).toHaveBeenCalledTimes(1);
+    const [campaignId, slug] = setCampaignPublicSlugMock.mock.calls[0]!;
+    expect(campaignId).toBe("campaign-1");
+    expect(slug).toMatch(/^[a-f0-9]{32}$/);
+
+    expect(updateCampaignFieldLinkMock).toHaveBeenCalledWith(
+      "campaign-1",
+      expect.stringContaining(`/c/${slug}`),
+      "Saiba mais",
+    );
+
+    // O conteúdo enviado por email deve conter o link da landing.
+    const [emailInput] = sendCampaignEmailMock.mock.calls[0]!;
+    expect(emailInput.content.link).toContain(`/c/${slug}`);
+    expect(emailInput.content.botao).toBe("Saiba mais");
+    expect(result.summary.total).toBe(4);
+  });
+
+  it("respeita link customizado sem gerar landing page", async () => {
+    findCampaignByIdMock.mockResolvedValue({
+      ...baseCampaign,
+      field: {
+        ...baseCampaign.field,
+        link: "https://exemplo.com/oferta",
+        botao: "Comprar agora",
+      },
+    });
+
+    await service.dispatchCampaign("campaign-1", "user-1");
+
+    expect(setCampaignPublicSlugMock).not.toHaveBeenCalled();
+    expect(updateCampaignFieldLinkMock).not.toHaveBeenCalled();
+
+    const [emailInput] = sendCampaignEmailMock.mock.calls[0]!;
+    expect(emailInput.content.link).toBe("https://exemplo.com/oferta");
+    expect(emailInput.content.botao).toBe("Comprar agora");
+  });
+
+  it("reusa slug existente em reenvio sem criar outro", async () => {
+    findCampaignByIdMock.mockResolvedValue({
+      ...baseCampaign,
+      publicSlug: "a".repeat(32),
+    });
+
+    await service.dispatchCampaign("campaign-1", "user-1");
+
+    expect(setCampaignPublicSlugMock).not.toHaveBeenCalled();
+    expect(updateCampaignFieldLinkMock).toHaveBeenCalledWith(
+      "campaign-1",
+      expect.stringContaining(`/c/${"a".repeat(32)}`),
+      "Saiba mais",
+    );
   });
 
   it("registra falha de email quando não há provedor ativo no canal ambos", async () => {

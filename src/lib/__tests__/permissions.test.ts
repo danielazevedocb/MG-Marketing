@@ -38,8 +38,8 @@ describe("RBAC — mapa de permissões por perfil", () => {
     expect(hasPermission(Role.Marketing, "users:write")).toBe(false);
   });
 
-  it("Comercial não pode escrever templates nem gerenciar usuários", () => {
-    expect(hasPermission(Role.Comercial, "templates:write")).toBe(false);
+  it("Comercial pode escrever templates e contatos, mas não gerenciar usuários", () => {
+    expect(hasPermission(Role.Comercial, "templates:write")).toBe(true);
     expect(hasPermission(Role.Comercial, "contacts:write")).toBe(true);
     expect(hasPermission(Role.Comercial, "users:write")).toBe(false);
   });

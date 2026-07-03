@@ -31,11 +31,20 @@ enum ContactStatus {
   Inativo
 }
 
+/// Estágio comercial do contato na pipeline.
+enum ContactTipo {
+  Lead
+  Prospect
+  Cliente
+  Parceiro
+}
+
 /// Tipo de template/conteúdo.
 enum TemplateType {
   Novidade
   Promocao
   Produto
+  Captacao
   Geral
 }
 
@@ -44,6 +53,7 @@ enum CampaignType {
   Novidade
   Promocao
   Produto
+  Captacao
   Geral
 }
 
@@ -172,6 +182,7 @@ model Contact {
   telefone String?
   email    String?
   status   ContactStatus @default(Ativo)
+  tipo     ContactTipo   @default(Lead)
 
   groups Group[] @relation("ContactGroups")
   tags   Tag[]   @relation("ContactTags")
@@ -182,6 +193,7 @@ model Contact {
   @@index([email])
   @@index([telefone])
   @@index([status])
+  @@index([tipo])
   @@index([empresa])
 }
 
@@ -250,6 +262,8 @@ model Campaign {
   recipientContactIds String[] @default([])
   /// IDs de grupos selecionados (contatos expandidos no envio).
   recipientGroupIds   String[] @default([])
+  /// Slug público não adivinhável da landing page "Saiba mais" (gerado no envio).
+  publicSlug          String?  @unique
 
   template      Template?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
   creator       User?          @relation(fields: [creatorId], references: [id], onDelete: SetNull)

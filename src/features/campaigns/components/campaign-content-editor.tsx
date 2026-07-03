@@ -5,6 +5,7 @@ import { useFormContext } from "react-hook-form";
 import { FileDropzone } from "@/components/forms/file-dropzone";
 import {
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -138,6 +139,10 @@ export function CampaignContentEditor({
               <FormControl>
                 <Input disabled={disabled} placeholder="https://" {...field} />
               </FormControl>
+              <FormDescription>
+                Deixe em branco para gerar automaticamente a página pública da
+                campanha (botão &quot;Saiba mais&quot;).
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -179,7 +184,9 @@ type CampaignImageEditorProps = {
   disabled?: boolean;
 };
 
-export function CampaignImageEditor({ disabled = false }: CampaignImageEditorProps) {
+export function CampaignImageEditor({
+  disabled = false,
+}: CampaignImageEditorProps) {
   const form = useFormContext<CampaignWizardStateInput>();
 
   return (

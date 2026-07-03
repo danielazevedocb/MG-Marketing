@@ -9,11 +9,13 @@ import {
   CampaignWizardError,
 } from "@/lib/campaign-errors";
 import { auditLog } from "@/services/audit-log";
+import { publicSlugSchema } from "@/lib/public-slug";
 import {
   createCampaign,
   deleteCampaign,
   duplicateCampaignRecord,
   findCampaignById,
+  findCampaignByPublicSlug,
   listCampaigns,
   updateCampaign,
   type CampaignFieldData,
@@ -73,9 +75,17 @@ export type CampaignDto = {
   recipientContactIds: string[];
   recipientGroupIds: string[];
   resolvedRecipientContactIds: string[];
+  publicSlug: string | null;
   field: CampaignFieldDto | null;
   createdAt: string;
   updatedAt: string;
+};
+
+/// DTO mínimo exposto na landing page pública — sem autor nem destinatários.
+export type PublicCampaignDto = {
+  type: CampaignType;
+  sentAt: string | null;
+  field: CampaignFieldDto;
 };
 
 export type CampaignListResponse = {
@@ -223,6 +233,7 @@ async function toCampaignDto(
     recipientContactIds: campaign.recipientContactIds,
     recipientGroupIds: campaign.recipientGroupIds,
     resolvedRecipientContactIds,
+    publicSlug: campaign.publicSlug,
     field: fieldToDto(campaign.field),
     createdAt: campaign.createdAt.toISOString(),
     updatedAt: campaign.updatedAt.toISOString(),
@@ -653,6 +664,30 @@ export class CampaignService {
       channels: campaign.channels,
       wizardStep: (campaign.wizardStep as WizardStep) ?? "criar",
       scheduledAt: campaign.scheduledAt?.toISOString() ?? "",
+    };
+  }
+
+  /**
+   * Busca campanha para a landing page pública. Sem autenticação: retorna
+   * apenas conteúdo da campanha (nunca autor/destinatários) e somente se a
+   * campanha já foi enviada.
+   */
+  async getPublicCampaignBySlug(
+    slug: string,
+  ): Promise<PublicCampaignDto | null> {
+    const parsed = publicSlugSchema.safeParse(slug);
+    if (!parsed.success) return null;
+
+    const campaign = await findCampaignByPublicSlug(parsed.data);
+    if (!campaign) return null;
+
+    const field = fieldToDto(campaign.field);
+    if (!field) return null;
+
+    return {
+      type: campaign.type,
+      sentAt: campaign.sentAt?.toISOString() ?? null,
+      field,
     };
   }
 

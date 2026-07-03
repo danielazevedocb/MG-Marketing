@@ -7,6 +7,10 @@ import type { NextAuthConfig } from "next-auth";
 /// são tratadas pelo route handler e excluídas no matcher do middleware.
 export const PUBLIC_ROUTES = ["/login"];
 
+/// Rotas abertas: acessíveis com OU sem sessão (landing pages públicas de
+/// campanha). Diferem de PUBLIC_ROUTES, que redirecionam usuário logado.
+export const OPEN_ROUTES = ["/c"];
+
 /// Caminho para onde o usuário autenticado é enviado após o login.
 export const DEFAULT_LOGIN_REDIRECT = "/dashboard";
 
@@ -23,6 +27,17 @@ export const authConfig = {
     // Executado pelo middleware: decide se a requisição está autorizada.
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = Boolean(auth?.user);
+
+      // Rotas abertas não exigem sessão nem redirecionam usuário logado.
+      const isOpenRoute = OPEN_ROUTES.some(
+        (route) =>
+          nextUrl.pathname === route ||
+          nextUrl.pathname.startsWith(`${route}/`),
+      );
+      if (isOpenRoute) {
+        return true;
+      }
+
       const isPublicRoute = PUBLIC_ROUTES.some(
         (route) =>
           nextUrl.pathname === route ||

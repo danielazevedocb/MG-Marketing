@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Role } from "@/generated/prisma/enums";
+import { ContactTipo, Role } from "@/generated/prisma/enums";
 import { ForbiddenError } from "@/lib/auth-errors";
 
 const authMock = vi.fn();
@@ -42,6 +42,7 @@ describe("RBAC das actions de contatos", () => {
     const result = await createContactAction({
       empresa: "MG Indústria",
       status: "Ativo",
+      tipo: ContactTipo.Lead,
       groupIds: [],
       tagIds: [],
     });
@@ -60,6 +61,7 @@ describe("RBAC das actions de contatos", () => {
     const result = await updateContactAction("contact-1", {
       empresa: "MG Indústria",
       status: "Ativo",
+      tipo: ContactTipo.Lead,
       groupIds: [],
       tagIds: [],
     });
@@ -87,6 +89,7 @@ describe("RBAC das actions de contatos", () => {
       id: "contact-1",
       empresa: "MG Indústria",
       status: "Ativo",
+      tipo: ContactTipo.Lead,
       groupIds: [],
       tagIds: [],
       groups: [],
@@ -101,6 +104,7 @@ describe("RBAC das actions de contatos", () => {
     const result = await createContactAction({
       empresa: "MG Indústria",
       status: "Ativo",
+      tipo: ContactTipo.Lead,
       groupIds: [],
       tagIds: [],
     });

@@ -53,6 +53,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "contacts:read",
     "contacts:write",
     "templates:read",
+    "templates:write",
     "campaigns:read",
     "campaigns:write",
     "campaigns:send",

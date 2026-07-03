@@ -175,6 +175,41 @@ export async function findCampaignById(
   });
 }
 
+/**
+ * Busca campanha pelo slug público — apenas campanhas já enviadas são
+ * expostas na landing page pública.
+ */
+export async function findCampaignByPublicSlug(
+  slug: string,
+): Promise<CampaignWithRelations | null> {
+  return prisma.campaign.findFirst({
+    where: { publicSlug: slug, status: CampaignStatus.sent },
+    include: campaignInclude,
+  });
+}
+
+export async function setCampaignPublicSlug(
+  id: string,
+  slug: string,
+): Promise<void> {
+  await prisma.campaign.update({
+    where: { id },
+    data: { publicSlug: slug },
+  });
+}
+
+/// Persiste o link/botão efetivamente enviados (landing gerada no dispatch).
+export async function updateCampaignFieldLink(
+  campaignId: string,
+  link: string,
+  botao: string,
+): Promise<void> {
+  await prisma.campaignField.update({
+    where: { campaignId },
+    data: { link, botao },
+  });
+}
+
 export async function findDueScheduledCampaigns(
   limit = 50,
 ): Promise<CampaignWithRelations[]> {

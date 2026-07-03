@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Copy,
+  ExternalLink,
   Mail,
   Megaphone,
   MessageSquare,
@@ -164,7 +165,18 @@ export function CampaignList({
     startTransition(async () => {
       const result = await resendCampaignAction(targetId);
       if (result.success) {
-        toast.success("Campanha reenviada com sucesso.");
+        const { summary } = result.data;
+        if (summary.failure === summary.total) {
+          toast.error(
+            "Falha ao reenviar: nenhum envio foi concluído. Verifique o Histórico.",
+          );
+        } else if (summary.failure > 0) {
+          toast.warning(
+            `Campanha reenviada com ${summary.failure} falha(s). Verifique o Histórico.`,
+          );
+        } else {
+          toast.success("Campanha reenviada com sucesso.");
+        }
         onChanged();
       } else {
         toast.error(result.error);
@@ -237,6 +249,20 @@ export function CampaignList({
                   disabled={isPending}
                   onChanged={onChanged}
                 />
+              ) : null}
+
+              {campaign.status === CampaignStatus.sent &&
+              campaign.publicSlug ? (
+                <Button variant="outline" size="sm" asChild>
+                  <a
+                    href={`/c/${campaign.publicSlug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <ExternalLink className="size-4" />
+                    Ver página
+                  </a>
+                </Button>
               ) : null}
 
               {canWrite || canSend ? (

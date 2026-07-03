@@ -84,6 +84,7 @@ export const TEMPLATE_TYPE_LABELS: Record<TemplateType, string> = {
   [TemplateType.Novidade]: "Novidade",
   [TemplateType.Promocao]: "Promoção",
   [TemplateType.Produto]: "Produto",
+  [TemplateType.Captacao]: "Captação",
   [TemplateType.Geral]: "Geral",
 };
 

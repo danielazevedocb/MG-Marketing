@@ -5,8 +5,15 @@ import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { ContactStatus } from "@/generated/prisma/enums";
+import { ContactStatus, ContactTipo } from "@/generated/prisma/enums";
 import type { ContactListFiltersInput } from "@/schemas/contact";
+
+const CONTACT_TIPO_LABELS: Record<ContactTipo, string> = {
+  [ContactTipo.Lead]: "Lead",
+  [ContactTipo.Prospect]: "Prospect",
+  [ContactTipo.Cliente]: "Cliente",
+  [ContactTipo.Parceiro]: "Parceiro",
+};
 
 type Option = { id: string; nome: string };
 
@@ -26,7 +33,11 @@ export function ContactFilters({
   onClear,
 }: ContactFiltersProps) {
   const hasFilters = Boolean(
-    filters.search || filters.status || filters.groupId || filters.tagId,
+    filters.search ||
+    filters.status ||
+    filters.tipo ||
+    filters.groupId ||
+    filters.tagId,
   );
 
   return (
@@ -56,6 +67,25 @@ export function ContactFilters({
         <option value="">Todos os status</option>
         <option value={ContactStatus.Ativo}>Ativo</option>
         <option value={ContactStatus.Inativo}>Inativo</option>
+      </Select>
+
+      <Select
+        value={filters.tipo ?? ""}
+        onChange={(event) =>
+          onChange({
+            tipo: event.target.value
+              ? (event.target.value as ContactTipo)
+              : undefined,
+          })
+        }
+        aria-label="Filtrar por tipo"
+      >
+        <option value="">Todos os tipos</option>
+        {Object.values(ContactTipo).map((tipo) => (
+          <option key={tipo} value={tipo}>
+            {CONTACT_TIPO_LABELS[tipo]}
+          </option>
+        ))}
       </Select>
 
       <Select

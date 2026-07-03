@@ -13,5 +13,9 @@
       "Bash(git branch:*)",
       "Bash(git pull:*)"
     ]
+  },
+  "enabledPlugins": {
+    "skill-creator@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true
   }
 }

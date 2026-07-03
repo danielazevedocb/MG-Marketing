@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ContactStatus } from "@/generated/prisma/enums";
+import { ContactStatus, ContactTipo } from "@/generated/prisma/enums";
 import { ContactValidationError } from "@/lib/contact-errors";
 
 const createContactMock = vi.fn();
@@ -49,6 +49,7 @@ const sampleContact = {
   telefone: "11999990000",
   email: "ana@mg.com",
   status: ContactStatus.Ativo,
+  tipo: ContactTipo.Lead,
   groups: [],
   tags: [],
   createdAt: new Date("2026-01-01"),
@@ -72,6 +73,7 @@ describe("ContactService", () => {
         telefone: "11999990000",
         email: "ana@mg.com",
         status: ContactStatus.Ativo,
+        tipo: ContactTipo.Lead,
         groupIds: [],
         tagIds: [],
       },
@@ -92,6 +94,7 @@ describe("ContactService", () => {
           empresa: "MG Indústria",
           email: "email-invalido",
           status: ContactStatus.Ativo,
+          tipo: ContactTipo.Lead,
           groupIds: [],
           tagIds: [],
         },
@@ -151,6 +154,7 @@ describe("ContactService", () => {
       {
         empresa: "MG Indústria",
         status: ContactStatus.Ativo,
+        tipo: ContactTipo.Lead,
         groupIds: ["clgrp001testgroup1"],
         tagIds: ["cltag001testtag001"],
       },

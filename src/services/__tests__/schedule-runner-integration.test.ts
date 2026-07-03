@@ -14,6 +14,8 @@ const createSendHistoryMock = vi.fn();
 const findCampaignByIdMock = vi.fn();
 const findContactsByIdsMock = vi.fn();
 const resolveRecipientContactIdsMock = vi.fn();
+const setCampaignPublicSlugMock = vi.fn();
+const updateCampaignFieldLinkMock = vi.fn();
 
 vi.mock("@/repositories/campaign", () => ({
   findDueScheduledCampaigns: (...args: unknown[]) =>
@@ -23,6 +25,10 @@ vi.mock("@/repositories/campaign", () => ({
   claimDraftCampaignForDispatch: (...args: unknown[]) =>
     claimDraftCampaignForDispatchMock(...args),
   findCampaignById: (...args: unknown[]) => findCampaignByIdMock(...args),
+  setCampaignPublicSlug: (...args: unknown[]) =>
+    setCampaignPublicSlugMock(...args),
+  updateCampaignFieldLink: (...args: unknown[]) =>
+    updateCampaignFieldLinkMock(...args),
 }));
 
 vi.mock("@/repositories/contact", () => ({
@@ -68,6 +74,7 @@ const baseCampaign = {
   wizardStep: "enviar",
   recipientContactIds: ["contact-1"],
   recipientGroupIds: [],
+  publicSlug: null,
   createdAt: new Date(),
   updatedAt: new Date(),
   field: {
@@ -115,6 +122,8 @@ describe("Integração runner + sending", () => {
     ]);
     createSendHistoryMock.mockResolvedValue({});
     claimDraftCampaignForDispatchMock.mockResolvedValue(true);
+    setCampaignPublicSlugMock.mockResolvedValue(undefined);
+    updateCampaignFieldLinkMock.mockResolvedValue(undefined);
   });
 
   it("registra resultado da execução em SendHistory", async () => {

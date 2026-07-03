@@ -1,7 +1,7 @@
 // Serviço de contatos — regras de negócio, validação Zod e auditoria.
 import { ZodError } from "zod";
 
-import { ContactStatus } from "@/generated/prisma/enums";
+import { ContactStatus, ContactTipo } from "@/generated/prisma/enums";
 import { ContactValidationError } from "@/lib/contact-errors";
 import { auditLog } from "@/services/audit-log";
 import {
@@ -55,6 +55,7 @@ export type ContactDto = {
   telefone: string | null;
   email: string | null;
   status: ContactStatus;
+  tipo: ContactTipo;
   groupIds: string[];
   tagIds: string[];
   groups: { id: string; nome: string }[];
@@ -78,6 +79,7 @@ function toContactDto(contact: ContactWithRelations): ContactDto {
     telefone: contact.telefone,
     email: contact.email,
     status: contact.status,
+    tipo: contact.tipo,
     groupIds: contact.groups.map((group) => group.id),
     tagIds: contact.tags.map((tag) => tag.id),
     groups: contact.groups.map((group) => ({
@@ -101,6 +103,7 @@ function toCreateData(input: ContactFormInput): CreateContactData {
     telefone: normalizeOptionalString(input.telefone),
     email: normalizeOptionalString(input.email),
     status: input.status,
+    tipo: input.tipo,
     groupIds: input.groupIds,
     tagIds: input.tagIds,
   };
@@ -184,6 +187,7 @@ export class ContactService {
     const query: ContactListQuery = {
       search: parsed.search,
       status: parsed.status,
+      tipo: parsed.tipo,
       groupId: parsed.groupId,
       tagId: parsed.tagId,
       skip,
@@ -216,6 +220,7 @@ export class ContactService {
         telefone: row.telefone ?? "",
         email: row.email ?? "",
         status: row.status || undefined,
+        tipo: row.tipo || undefined,
         nome: row.nome ?? "",
       });
 
@@ -260,6 +265,7 @@ export class ContactService {
         telefone: normalizeOptionalString(parsed.data.telefone),
         email: normalizeOptionalString(parsed.data.email),
         status: parsed.data.status,
+        tipo: parsed.data.tipo,
       });
     });
 
@@ -418,7 +424,9 @@ export function getContactService(): ContactService {
   return defaultContactService;
 }
 
-export function setContactServiceForTests(service: ContactService | null): void {
+export function setContactServiceForTests(
+  service: ContactService | null,
+): void {
   defaultContactService = service;
 }
 

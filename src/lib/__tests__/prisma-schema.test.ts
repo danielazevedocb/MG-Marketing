@@ -43,7 +43,7 @@ describe("enums do Prisma Client", () => {
   });
 
   it("TemplateType e CampaignType cobrem as categorias de conteúdo", () => {
-    const categorias = ["Novidade", "Promocao", "Produto", "Geral"];
+    const categorias = ["Novidade", "Promocao", "Produto", "Captacao", "Geral"];
     expect(Object.values(TemplateType)).toEqual(categorias);
     expect(Object.values(CampaignType)).toEqual(categorias);
   });
@@ -134,7 +134,9 @@ describe("migration inicial (0_init)", () => {
   });
 
   it("define DEFAULT 'draft' para Campaign.status", () => {
-    expect(schemaSql).toMatch(/"status"\s+"CampaignStatus"\s+NOT NULL DEFAULT 'draft'/);
+    expect(schemaSql).toMatch(
+      /"status"\s+"CampaignStatus"\s+NOT NULL DEFAULT 'draft'/,
+    );
   });
 
   it("define foreign keys com integridade relacional", () => {

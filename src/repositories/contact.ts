@@ -1,6 +1,6 @@
 // Repository de contatos — acesso a dados via Prisma (CRUD + filtros).
 import type { Contact, Prisma } from "@/generated/prisma/client";
-import { ContactStatus } from "@/generated/prisma/enums";
+import { ContactStatus, ContactTipo } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 
 export type ContactWithRelations = Prisma.ContactGetPayload<{
@@ -13,6 +13,7 @@ export type CreateContactData = {
   telefone?: string | null;
   email?: string | null;
   status?: ContactStatus;
+  tipo?: ContactTipo;
   groupIds?: string[];
   tagIds?: string[];
 };
@@ -22,6 +23,7 @@ export type UpdateContactData = Partial<CreateContactData>;
 export type ContactListQuery = {
   search?: string;
   status?: ContactStatus;
+  tipo?: ContactTipo;
   groupId?: string;
   tagId?: string;
   skip?: number;
@@ -40,6 +42,10 @@ function buildWhere(query: ContactListQuery): Prisma.ContactWhereInput {
 
   if (query.status) {
     where.status = query.status;
+  }
+
+  if (query.tipo) {
+    where.tipo = query.tipo;
   }
 
   if (query.groupId) {
@@ -80,6 +86,7 @@ export async function createContact(
       telefone: data.telefone,
       email: data.email,
       status: data.status ?? ContactStatus.Ativo,
+      tipo: data.tipo ?? ContactTipo.Lead,
       groups: relationConnect(data.groupIds),
       tags: relationConnect(data.tagIds),
     },
@@ -98,6 +105,7 @@ export async function updateContact(
   if (data.telefone !== undefined) updateData.telefone = data.telefone;
   if (data.email !== undefined) updateData.email = data.email;
   if (data.status !== undefined) updateData.status = data.status;
+  if (data.tipo !== undefined) updateData.tipo = data.tipo;
 
   if (data.groupIds !== undefined) {
     updateData.groups = {
@@ -162,6 +170,7 @@ export async function createContactsBatch(
           telefone: contact.telefone,
           email: contact.email,
           status: contact.status ?? ContactStatus.Ativo,
+          tipo: contact.tipo ?? ContactTipo.Lead,
           groups: relationConnect(contact.groupIds),
           tags: relationConnect(contact.tagIds),
         },

@@ -3,9 +3,12 @@ import { Channel, SendStatus } from "@/generated/prisma/enums";
 import { CampaignValidationError } from "@/lib/campaign-errors";
 import { NoActiveEmailProviderError } from "@/lib/sending-errors";
 import { auditLog } from "@/services/audit-log";
+import { buildCampaignPublicUrl, generatePublicSlug } from "@/lib/public-slug";
 import {
   claimDraftCampaignForDispatch,
   findCampaignById,
+  setCampaignPublicSlug,
+  updateCampaignFieldLink,
 } from "@/repositories/campaign";
 import { findContactsByIds } from "@/repositories/contact";
 import { createSendHistory } from "@/repositories/send-history";
@@ -144,6 +147,21 @@ export class ChannelDispatchService {
     );
 
     assertCampaignContentComplete(content);
+
+    // Sem link customizado: gera a landing page pública "Saiba mais" e usa a
+    // URL dela como destino do CTA (email) e do link (WhatsApp).
+    let landingUrl: string | null = null;
+    if (!content.link?.trim()) {
+      const slug = campaign.publicSlug ?? generatePublicSlug();
+      if (!campaign.publicSlug) {
+        await setCampaignPublicSlug(campaignId, slug);
+      }
+      landingUrl = buildCampaignPublicUrl(slug);
+      content.link = landingUrl;
+      content.botao = content.botao?.trim() || "Saiba mais";
+      // Persiste o que foi realmente enviado para preview/histórico pós-envio.
+      await updateCampaignFieldLink(campaignId, content.link, content.botao);
+    }
 
     const getActiveProvider =
       this.deps.getActiveProvider ?? getActiveEmailProviderContext;
@@ -308,6 +326,7 @@ export class ChannelDispatchService {
         total: items.length,
         success,
         failure,
+        landingUrl,
       },
     });
 

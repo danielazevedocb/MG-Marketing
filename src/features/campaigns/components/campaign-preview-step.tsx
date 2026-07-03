@@ -84,6 +84,13 @@ export function CampaignPreviewStep() {
         />
       </div>
 
+      {!fieldContent.link?.trim() ? (
+        <p className="bg-muted/50 text-muted-foreground rounded-md border border-dashed px-3 py-2 text-sm">
+          Uma página pública &quot;Saiba mais&quot; será criada no envio e usada
+          como destino do botão no email e do link no WhatsApp.
+        </p>
+      ) : null}
+
       <DualPreviewLazy content={fieldContent} />
     </div>
   );

@@ -1,7 +1,7 @@
 // Schemas Zod de contatos — validação compartilhada entre formulário e servidor.
 import { z } from "zod";
 
-import { ContactStatus } from "@/generated/prisma/enums";
+import { ContactStatus, ContactTipo } from "@/generated/prisma/enums";
 import { entityIdArraySchema, entityIdSchema } from "@/schemas/id";
 
 const telefoneSchema = z
@@ -24,6 +24,7 @@ const emailSchema = z
   .or(z.literal(""));
 
 export const contactStatusSchema = z.nativeEnum(ContactStatus);
+export const contactTipoSchema = z.nativeEnum(ContactTipo);
 
 export const contactFormSchema = z.object({
   nome: z
@@ -40,6 +41,7 @@ export const contactFormSchema = z.object({
   telefone: telefoneSchema,
   email: emailSchema,
   status: contactStatusSchema,
+  tipo: contactTipoSchema,
   groupIds: entityIdArraySchema("Grupo"),
   tagIds: entityIdArraySchema("Tag"),
 });
@@ -49,6 +51,7 @@ export type ContactFormInput = z.infer<typeof contactFormSchema>;
 export const contactListFiltersSchema = z.object({
   search: z.string().trim().max(200).optional(),
   status: contactStatusSchema.optional(),
+  tipo: contactTipoSchema.optional(),
   groupId: entityIdSchema("Grupo").optional(),
   tagId: entityIdSchema("Tag").optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -57,7 +60,7 @@ export const contactListFiltersSchema = z.object({
 
 export type ContactListFiltersInput = z.infer<typeof contactListFiltersSchema>;
 
-/// Linha de importação CSV — colunas esperadas: empresa, telefone, email, status, nome.
+/// Linha de importação CSV — colunas esperadas: empresa, telefone, email, status, nome, tipo.
 export const csvContactRowSchema = z.object({
   empresa: z
     .string()
@@ -67,6 +70,7 @@ export const csvContactRowSchema = z.object({
   telefone: telefoneSchema,
   email: emailSchema,
   status: contactStatusSchema.default(ContactStatus.Ativo),
+  tipo: contactTipoSchema.default(ContactTipo.Lead),
   nome: z
     .string()
     .trim()

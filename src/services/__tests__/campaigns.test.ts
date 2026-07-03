@@ -15,6 +15,7 @@ const findContactsByIdsMock = vi.fn();
 const findExistingGroupIdsMock = vi.fn();
 const findTemplateByIdMock = vi.fn();
 const createAuditLogMock = vi.fn();
+const findCampaignByPublicSlugMock = vi.fn();
 
 vi.mock("@/repositories/campaign", () => ({
   createCampaign: (...args: unknown[]) => createCampaignMock(...args),
@@ -24,6 +25,8 @@ vi.mock("@/repositories/campaign", () => ({
     duplicateCampaignRecordMock(...args),
   deleteCampaign: vi.fn(),
   listCampaigns: vi.fn(),
+  findCampaignByPublicSlug: (...args: unknown[]) =>
+    findCampaignByPublicSlugMock(...args),
 }));
 
 vi.mock("@/repositories/contact", () => ({
@@ -45,7 +48,10 @@ vi.mock("@/services/audit-log", () => ({
   auditLog: (...args: unknown[]) => createAuditLogMock(...args),
 }));
 
-import { CampaignService, resolveRecipientContactIds } from "@/services/campaigns";
+import {
+  CampaignService,
+  resolveRecipientContactIds,
+} from "@/services/campaigns";
 
 const sampleField = {
   id: "field-1",
@@ -79,6 +85,7 @@ const sampleCampaign = {
   wizardStep: "criar",
   recipientContactIds: [] as string[],
   recipientGroupIds: [] as string[],
+  publicSlug: null as string | null,
   field: sampleField,
   template: null,
   createdAt: new Date(),
@@ -371,7 +378,11 @@ describe("CampaignService", () => {
       wizardStep: "enviar",
     });
 
-    const result = await service.scheduleCampaign("campaign-1", future, "user-1");
+    const result = await service.scheduleCampaign(
+      "campaign-1",
+      future,
+      "user-1",
+    );
 
     expect(result.status).toBe(CampaignStatus.scheduled);
     expect(updateCampaignMock).toHaveBeenCalledWith(
@@ -426,7 +437,10 @@ describe("CampaignService", () => {
       scheduledAt: null,
     });
 
-    const result = await service.cancelScheduledCampaign("campaign-1", "user-1");
+    const result = await service.cancelScheduledCampaign(
+      "campaign-1",
+      "user-1",
+    );
 
     expect(result.status).toBe(CampaignStatus.draft);
     expect(updateCampaignMock).toHaveBeenCalledWith("campaign-1", {
@@ -472,6 +486,50 @@ describe("CampaignService", () => {
   });
 });
 
+describe("CampaignService.getPublicCampaignBySlug", () => {
+  const validSlug = "a".repeat(32);
+  let service: CampaignService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new CampaignService();
+  });
+
+  it("retorna DTO público mínimo para campanha enviada", async () => {
+    findCampaignByPublicSlugMock.mockResolvedValue({
+      ...sampleCampaign,
+      status: CampaignStatus.sent,
+      sentAt: new Date("2026-07-03T12:00:00Z"),
+      publicSlug: validSlug,
+    });
+
+    const result = await service.getPublicCampaignBySlug(validSlug);
+
+    expect(findCampaignByPublicSlugMock).toHaveBeenCalledWith(validSlug);
+    expect(result).not.toBeNull();
+    expect(result?.field.titulo).toBe("Título");
+    expect(result?.type).toBe(CampaignType.Geral);
+    // Não expõe dados internos (autor/destinatários).
+    expect(result).not.toHaveProperty("creatorId");
+    expect(result).not.toHaveProperty("recipientContactIds");
+  });
+
+  it("retorna null quando a campanha não existe ou não foi enviada", async () => {
+    findCampaignByPublicSlugMock.mockResolvedValue(null);
+
+    const result = await service.getPublicCampaignBySlug(validSlug);
+
+    expect(result).toBeNull();
+  });
+
+  it("rejeita slug malformado sem consultar o banco", async () => {
+    const result = await service.getPublicCampaignBySlug("slug-invalido");
+
+    expect(result).toBeNull();
+    expect(findCampaignByPublicSlugMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("resolveRecipientContactIds", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -480,10 +538,7 @@ describe("resolveRecipientContactIds", () => {
   it("seleção de grupo expande para contatos do grupo", async () => {
     findContactIdsByGroupIdsMock.mockResolvedValue(["contact-a", "contact-b"]);
 
-    const ids = await resolveRecipientContactIds(
-      ["contact-c"],
-      ["group-1"],
-    );
+    const ids = await resolveRecipientContactIds(["contact-c"], ["group-1"]);
 
     expect(ids).toEqual(
       expect.arrayContaining(["contact-a", "contact-b", "contact-c"]),

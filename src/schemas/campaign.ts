@@ -124,7 +124,9 @@ export const campaignWizardStateSchema = z.object({
   scheduledAt: z.string().datetime().optional().or(z.literal("")),
 });
 
-export type CampaignWizardStateInput = z.infer<typeof campaignWizardStateSchema>;
+export type CampaignWizardStateInput = z.infer<
+  typeof campaignWizardStateSchema
+>;
 
 export const campaignCreateStepSchema = z.object({
   nome: campaignWizardStateSchema.shape.nome,
@@ -207,12 +209,15 @@ export const campaignListFiltersSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
-export type CampaignListFiltersInput = z.infer<typeof campaignListFiltersSchema>;
+export type CampaignListFiltersInput = z.infer<
+  typeof campaignListFiltersSchema
+>;
 
 export const CAMPAIGN_TYPE_LABELS: Record<CampaignType, string> = {
   [CampaignType.Novidade]: "Novidade",
   [CampaignType.Promocao]: "Promoção",
   [CampaignType.Produto]: "Produto",
+  [CampaignType.Captacao]: "Captação",
   [CampaignType.Geral]: "Geral",
 };
 
@@ -276,7 +281,9 @@ export function formatZodValidationError(error: ZodError): string {
   // genéricas do Zod ("Invalid input"/"Invalid input: ...") são traduzidas abaixo
   // com base no código do problema (issue.code), não no texto em inglês.
   const isGenericMessage =
-    !message || message === "Invalid input" || message.startsWith("Invalid input");
+    !message ||
+    message === "Invalid input" ||
+    message.startsWith("Invalid input");
 
   if (!isGenericMessage) {
     return message;

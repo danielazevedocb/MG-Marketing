@@ -45,6 +45,18 @@ describe("proteção de rotas — middleware (authorized)", () => {
     expect(result).toBeInstanceOf(Response);
     expect((result as Response).status).toBeGreaterThanOrEqual(300);
   });
+
+  it("permite landing page pública /c/[slug] sem sessão", () => {
+    expect(
+      authorized({ loggedIn: false, pathname: `/c/${"a".repeat(32)}` }),
+    ).toBe(true);
+  });
+
+  it("permite landing page pública /c/[slug] com sessão (sem redirect)", () => {
+    expect(
+      authorized({ loggedIn: true, pathname: `/c/${"a".repeat(32)}` }),
+    ).toBe(true);
+  });
 });
 
 describe("proteção de rotas — Route Handler", () => {
