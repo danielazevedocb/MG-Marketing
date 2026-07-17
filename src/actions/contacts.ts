@@ -1,11 +1,12 @@
 "use server";
 
 // Server Actions do módulo de contatos — protegidas por RBAC no servidor.
-import {
-  ForbiddenError,
-  UnauthorizedError,
-} from "@/lib/auth-errors";
 import { ContactValidationError } from "@/lib/contact-errors";
+import {
+  mapActionError as mapActionErrorBase,
+  type ActionError,
+  type ActionSuccess,
+} from "@/lib/action-error";
 import type { ContactStatus } from "@/generated/prisma/enums";
 import {
   contactFormSchema,
@@ -27,22 +28,12 @@ import {
   type ContactListResponse,
 } from "@/services/contacts";
 
-type ActionError = { success: false; error: string; status?: number };
-type ActionSuccess<T> = { success: true; data: T };
-
 export type ContactActionResult<T> = ActionSuccess<T> | ActionError;
 
 function mapActionError(error: unknown): ActionError {
-  if (error instanceof UnauthorizedError) {
-    return { success: false, error: error.message, status: 401 };
-  }
-  if (error instanceof ForbiddenError) {
-    return { success: false, error: error.message, status: 403 };
-  }
-  if (error instanceof ContactValidationError) {
-    return { success: false, error: error.message };
-  }
-  return { success: false, error: "Não foi possível concluir a operação." };
+  return mapActionErrorBase(error, {
+    knownErrors: [ContactValidationError],
+  });
 }
 
 export async function listContactsAction(

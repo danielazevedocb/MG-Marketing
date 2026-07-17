@@ -1,9 +1,10 @@
 "use server";
 
 import {
-  ForbiddenError,
-  UnauthorizedError,
-} from "@/lib/auth-errors";
+  mapActionError as mapActionErrorBase,
+  type ActionError,
+  type ActionSuccess,
+} from "@/lib/action-error";
 import type {
   AuditLogExportFiltersInput,
   AuditLogFiltersInput,
@@ -18,19 +19,10 @@ import {
   type SendHistoryListResponse,
 } from "@/services/history";
 
-type ActionError = { success: false; error: string; status?: number };
-type ActionSuccess<T> = { success: true; data: T };
-
 export type HistoryActionResult<T> = ActionSuccess<T> | ActionError;
 
 function mapActionError(error: unknown): ActionError {
-  if (error instanceof UnauthorizedError) {
-    return { success: false, error: error.message, status: 401 };
-  }
-  if (error instanceof ForbiddenError) {
-    return { success: false, error: error.message, status: 403 };
-  }
-  return { success: false, error: "Não foi possível concluir a operação." };
+  return mapActionErrorBase(error);
 }
 
 export async function listSendHistoryAction(

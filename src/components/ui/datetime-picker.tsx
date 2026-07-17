@@ -1,15 +1,9 @@
 "use client";
 
-import { CalendarIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { DatePickerShell } from "@/components/ui/date-picker-shell";
 import { Select } from "@/components/ui/select";
 import {
   formatDateTimeBr,
@@ -17,7 +11,6 @@ import {
   parseIsoDateTime,
   setTimeOnDate,
 } from "@/lib/date-format";
-import { cn } from "@/lib/utils";
 
 const HOURS = Array.from({ length: 24 }, (_, index) => index);
 const MINUTES = Array.from({ length: 60 }, (_, index) => index);
@@ -66,7 +59,11 @@ export function DateTimePicker({
     setMinutes(next.minutes);
   }, [value]);
 
-  function emitChange(date: Date | undefined, nextHours: number, nextMinutes: number) {
+  function emitChange(
+    date: Date | undefined,
+    nextHours: number,
+    nextMinutes: number,
+  ) {
     if (!date) {
       onChange("");
       return;
@@ -103,109 +100,96 @@ export function DateTimePicker({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          id={id}
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          aria-label={ariaLabel}
-          className={cn(
-            "w-full justify-start text-left font-normal",
-            !value && "text-muted-foreground",
-            className,
-          )}
-        >
-          <CalendarIcon className="size-4" />
-          {selected ? formatDateTimeBr(selected) : placeholder}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selected}
-          onSelect={handleDateSelect}
-          defaultMonth={selected}
-        />
-        <div className="space-y-3 border-t p-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label
-                htmlFor={id ? `${id}-hour` : undefined}
-                className="text-muted-foreground text-xs"
-              >
-                Hora
-              </label>
-              <Select
-                id={id ? `${id}-hour` : undefined}
-                value={String(hours)}
-                disabled={disabled}
-                onChange={(event) =>
-                  handleHoursChange(Number(event.target.value))
-                }
-              >
-                {HOURS.map((hour) => (
-                  <option key={hour} value={hour}>
-                    {padTimeUnit(hour)}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label
-                htmlFor={id ? `${id}-minute` : undefined}
-                className="text-muted-foreground text-xs"
-              >
-                Minuto
-              </label>
-              <Select
-                id={id ? `${id}-minute` : undefined}
-                value={String(minutes)}
-                disabled={disabled}
-                onChange={(event) =>
-                  handleMinutesChange(Number(event.target.value))
-                }
-              >
-                {MINUTES.map((minute) => (
-                  <option key={minute} value={minute}>
-                    {padTimeUnit(minute)}
-                  </option>
-                ))}
-              </Select>
-            </div>
+    <DatePickerShell
+      open={open}
+      onOpenChange={setOpen}
+      id={id}
+      disabled={disabled}
+      ariaLabel={ariaLabel}
+      className={className}
+      triggerText={selected ? formatDateTimeBr(selected) : placeholder}
+      hasValue={Boolean(value)}
+      selected={selected}
+      onSelectDate={handleDateSelect}
+      footer={
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <label
+              htmlFor={id ? `${id}-hour` : undefined}
+              className="text-muted-foreground text-xs"
+            >
+              Hora
+            </label>
+            <Select
+              id={id ? `${id}-hour` : undefined}
+              value={String(hours)}
+              disabled={disabled}
+              onChange={(event) =>
+                handleHoursChange(Number(event.target.value))
+              }
+            >
+              {HOURS.map((hour) => (
+                <option key={hour} value={hour}>
+                  {padTimeUnit(hour)}
+                </option>
+              ))}
+            </Select>
           </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              onClick={() => {
-                const now = new Date();
-                setHours(now.getHours());
-                setMinutes(now.getMinutes());
-                onChange(now.toISOString());
-                setOpen(false);
-              }}
+          <div className="space-y-1">
+            <label
+              htmlFor={id ? `${id}-minute` : undefined}
+              className="text-muted-foreground text-xs"
             >
-              Agora
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              onClick={() => {
-                onChange("");
-                setOpen(false);
-              }}
+              Minuto
+            </label>
+            <Select
+              id={id ? `${id}-minute` : undefined}
+              value={String(minutes)}
+              disabled={disabled}
+              onChange={(event) =>
+                handleMinutesChange(Number(event.target.value))
+              }
             >
-              Limpar
-            </Button>
+              {MINUTES.map((minute) => (
+                <option key={minute} value={minute}>
+                  {padTimeUnit(minute)}
+                </option>
+              ))}
+            </Select>
           </div>
         </div>
-      </PopoverContent>
-    </Popover>
+      }
+      actions={
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => {
+              const now = new Date();
+              setHours(now.getHours());
+              setMinutes(now.getMinutes());
+              onChange(now.toISOString());
+              setOpen(false);
+            }}
+          >
+            Agora
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => {
+              onChange("");
+              setOpen(false);
+            }}
+          >
+            Limpar
+          </Button>
+        </>
+      }
+    />
   );
 }

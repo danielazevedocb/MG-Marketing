@@ -71,4 +71,17 @@ describe("processWhatsAppRecipient", () => {
     expect(link.waMeUrl).toContain("https://wa.me/5511988887777?text=");
     expect(link.message).toContain("*Oferta especial*");
   });
+
+  it("deixa claro no histórico que o status 'Enviado' é apenas o link gerado, não entrega confirmada", () => {
+    const result = processWhatsAppRecipient(
+      { contactId: "contact-1", telefone: "(11) 98888-7777" },
+      sampleContent,
+    );
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    expect(result.message).toContain("Link wa.me gerado (envio manual)");
+    expect(result.message).toContain(result.waMeUrl);
+  });
 });

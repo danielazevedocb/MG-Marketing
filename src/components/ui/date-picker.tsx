@@ -1,21 +1,14 @@
 "use client";
 
-import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { DatePickerShell } from "@/components/ui/date-picker-shell";
 import {
   formatDateBr,
   parseDateOnly,
   toDateOnlyString,
 } from "@/lib/date-format";
-import { cn } from "@/lib/utils";
 
 type DatePickerProps = {
   value?: string;
@@ -46,32 +39,19 @@ export function DatePicker({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          id={id}
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          aria-label={ariaLabel}
-          className={cn(
-            "w-full justify-start text-left font-normal",
-            !value && "text-muted-foreground",
-            className,
-          )}
-        >
-          <CalendarIcon className="size-4" />
-          {selected ? formatDateBr(selected) : placeholder}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selected}
-          onSelect={handleSelect}
-          defaultMonth={selected}
-        />
-        <div className="flex gap-2 border-t p-3">
+    <DatePickerShell
+      open={open}
+      onOpenChange={setOpen}
+      id={id}
+      disabled={disabled}
+      ariaLabel={ariaLabel}
+      className={className}
+      triggerText={selected ? formatDateBr(selected) : placeholder}
+      hasValue={Boolean(value)}
+      selected={selected}
+      onSelectDate={handleSelect}
+      actions={
+        <>
           <Button
             type="button"
             variant="outline"
@@ -96,8 +76,8 @@ export function DatePicker({
           >
             Limpar
           </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
+        </>
+      }
+    />
   );
 }

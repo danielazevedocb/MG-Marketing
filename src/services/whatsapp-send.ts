@@ -34,7 +34,9 @@ export function buildWhatsAppMessage(content: CampaignFieldInput): string {
 export function generateWaMeLinkForPhone(
   telefone: string,
   content: CampaignFieldInput,
-): { success: true; waMeUrl: string; normalizedPhone: string; message: string } | { success: false; reason: string } {
+):
+  | { success: true; waMeUrl: string; normalizedPhone: string; message: string }
+  | { success: false; reason: string } {
   const normalized = normalizarTelefoneWhatsApp(telefone);
   if (!normalized.valid) {
     return { success: false, reason: normalized.reason };
@@ -75,6 +77,9 @@ export function processWhatsAppRecipient(
     contactId: recipient.contactId,
     recipient: linkResult.normalizedPhone,
     waMeUrl: linkResult.waMeUrl,
-    message: linkResult.waMeUrl,
+    // O status "Enviado" aqui significa "link wa.me gerado com sucesso", não
+    // confirmação de entrega — o disparo real é manual (usuário abre o link).
+    // A mensagem deixa isso explícito no histórico de envios.
+    message: `Link wa.me gerado (envio manual): ${linkResult.waMeUrl}`,
   };
 }
