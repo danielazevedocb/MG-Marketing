@@ -16,8 +16,15 @@ export const ALLOWED_MIME_BY_ASSET_TYPE: Record<
   FileAssetType,
   readonly string[]
 > = {
-  [FileAssetType.banner]: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-  [FileAssetType.logo]: ["image/jpeg", "image/png", "image/webp", "image/svg+xml"],
+  [FileAssetType.banner]: [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+  ],
+  // SVG não é aceito: é XML e pode conter <script>, risco de XSS armazenado
+  // se um dia for servido/renderizado inline (ver security.md).
+  [FileAssetType.logo]: ["image/jpeg", "image/png", "image/webp"],
   [FileAssetType.imagem]: [
     "image/jpeg",
     "image/png",

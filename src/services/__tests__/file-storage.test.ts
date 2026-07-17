@@ -61,7 +61,12 @@ describe("FileStorageService", () => {
       uploadedById: "user-1",
     });
 
-    const buffer = Buffer.from("fake-image");
+    // Assinatura PNG real (magic bytes) — a validação de conteúdo do arquivo
+    // rejeita buffers que não batem com o `mimeType` declarado.
+    const buffer = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      Buffer.from("fake-image-body"),
+    ]);
     const result = await service.uploadAndPersist({
       buffer,
       originalName: "foto.png",
@@ -82,7 +87,26 @@ describe("FileStorageService", () => {
     );
     expect(createFileAssetMock.mock.calls[0]?.[0]).not.toHaveProperty("buffer");
     expect(createFileAssetMock.mock.calls[0]?.[0]).not.toHaveProperty("data");
-    expect(result.fileAsset.url).toBe("https://cdn.example.com/uploads/test.png");
+    expect(result.fileAsset.url).toBe(
+      "https://cdn.example.com/uploads/test.png",
+    );
+  });
+
+  it("rejeita arquivo cujo conteúdo não corresponde ao mimeType declarado", async () => {
+    const buffer = Buffer.from("isto nao e um png de verdade");
+
+    await expect(
+      service.uploadAndPersist({
+        buffer,
+        originalName: "foto.png",
+        mimeType: "image/png",
+        type: FileAssetType.imagem,
+        uploadedById: "user-1",
+      }),
+    ).rejects.toThrow(/não corresponde ao tipo declarado/);
+
+    expect(storage.upload).not.toHaveBeenCalled();
+    expect(createFileAssetMock).not.toHaveBeenCalled();
   });
 
   it("removeFileAsset remove objeto do R2 e registro do banco", async () => {

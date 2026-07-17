@@ -8,13 +8,9 @@ import {
 } from "@/generated/prisma/enums";
 import { normalizeOptionalString } from "@/schemas/contact";
 import { entityIdArraySchema, entityIdSchema } from "@/schemas/id";
+import { httpUrlSchema, optionalHttpUrlSchema } from "@/schemas/url";
 
-const optionalUrl = z
-  .string()
-  .trim()
-  .url("URL inválida")
-  .optional()
-  .or(z.literal(""));
+const optionalUrl = optionalHttpUrlSchema();
 
 function optionalShortText(max: number, label: string) {
   return z
@@ -74,7 +70,7 @@ export const campaignFieldSchema = z.object({
   banner: optionalUrl,
   imagem: optionalUrl,
   imagens: z
-    .array(z.string().trim().url("URL de imagem inválida"))
+    .array(httpUrlSchema("URL de imagem inválida"))
     .max(8, "Máximo de 8 imagens na galeria")
     .default([]),
   link: optionalUrl,

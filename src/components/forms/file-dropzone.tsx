@@ -6,10 +6,7 @@ import { useCallback, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import { FileUp, Loader2, Upload, X } from "lucide-react";
 
-import {
-  uploadFileAction,
-  type FileAssetDto,
-} from "@/actions/file-upload";
+import { uploadFileAction, type FileAssetDto } from "@/actions/file-upload";
 import { Button } from "@/components/ui/button";
 import { FileAssetType } from "@/generated/prisma/enums";
 import { cn } from "@/lib/utils";
@@ -28,7 +25,7 @@ type FileDropzoneProps = {
 
 const DEFAULT_ACCEPT_BY_TYPE: Partial<Record<FileAssetType, string>> = {
   [FileAssetType.banner]: "image/jpeg,image/png,image/webp,image/gif",
-  [FileAssetType.logo]: "image/jpeg,image/png,image/webp,image/svg+xml",
+  [FileAssetType.logo]: "image/jpeg,image/png,image/webp",
   [FileAssetType.imagem]: "image/jpeg,image/png,image/webp,image/gif",
   [FileAssetType.catalogo]: "application/pdf,image/jpeg,image/png,image/webp",
   [FileAssetType.pdf]: "application/pdf",
@@ -167,7 +164,12 @@ export function FileDropzone({
               <p className="text-sm font-medium">{label}</p>
               <p className="text-muted-foreground text-xs">{description}</p>
             </div>
-            <Button type="button" variant="outline" size="sm" disabled={disabled}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+            >
               <FileUp className="size-4" />
               Selecionar arquivo
             </Button>
@@ -204,7 +206,9 @@ export function FileDropzone({
             <p className="truncate text-sm font-medium">
               {preview.filename ?? "Arquivo enviado"}
             </p>
-            <p className="text-muted-foreground truncate text-xs">{preview.url}</p>
+            <p className="text-muted-foreground truncate text-xs">
+              {preview.url}
+            </p>
             {preview.size ? (
               <p className="text-muted-foreground text-xs">
                 {(preview.size / 1024).toFixed(1)} KB

@@ -3,13 +3,9 @@ import { z } from "zod";
 
 import { TemplateType } from "@/generated/prisma/enums";
 import { normalizeOptionalString } from "@/schemas/contact";
+import { optionalHttpUrlSchema } from "@/schemas/url";
 
-const optionalUrl = z
-  .string()
-  .trim()
-  .url("URL inválida")
-  .optional()
-  .or(z.literal(""));
+const optionalUrl = optionalHttpUrlSchema();
 
 function optionalShortText(max: number, label: string) {
   return z

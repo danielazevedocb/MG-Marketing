@@ -1,5 +1,6 @@
 // Repository de grupos — CRUD e listagem.
 import type { Group, Prisma } from "@/generated/prisma/client";
+import { ContactStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 
 export type GroupWithCount = Prisma.GroupGetPayload<{
@@ -39,7 +40,9 @@ export async function listGroups(): Promise<GroupWithCount[]> {
   });
 }
 
-export async function findExistingGroupIds(ids: string[]): Promise<Set<string>> {
+export async function findExistingGroupIds(
+  ids: string[],
+): Promise<Set<string>> {
   if (ids.length === 0) return new Set();
 
   const groups = await prisma.group.findMany({
@@ -48,4 +51,30 @@ export async function findExistingGroupIds(ids: string[]): Promise<Set<string>> 
   });
 
   return new Set(groups.map((group) => group.id));
+}
+
+/**
+ * Resolve os contatos ativos de vários grupos em uma única query, retornando
+ * o mapeamento grupo → ids de contato. Usado para evitar N+1 ao montar DTOs
+ * de uma página inteira de campanhas (uma query por campanha com grupos).
+ */
+export async function findContactIdsByGroupIdsBatch(
+  groupIds: string[],
+): Promise<Map<string, string[]>> {
+  if (groupIds.length === 0) return new Map();
+
+  const groups = await prisma.group.findMany({
+    where: { id: { in: groupIds } },
+    select: {
+      id: true,
+      contacts: {
+        where: { status: ContactStatus.Ativo },
+        select: { id: true },
+      },
+    },
+  });
+
+  return new Map(
+    groups.map((group) => [group.id, group.contacts.map((c) => c.id)]),
+  );
 }

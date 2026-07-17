@@ -16,6 +16,8 @@ const findExistingGroupIdsMock = vi.fn();
 const findTemplateByIdMock = vi.fn();
 const createAuditLogMock = vi.fn();
 const findCampaignByPublicSlugMock = vi.fn();
+const listCampaignsMock = vi.fn();
+const findContactIdsByGroupIdsBatchMock = vi.fn();
 
 vi.mock("@/repositories/campaign", () => ({
   createCampaign: (...args: unknown[]) => createCampaignMock(...args),
@@ -24,7 +26,7 @@ vi.mock("@/repositories/campaign", () => ({
   duplicateCampaignRecord: (...args: unknown[]) =>
     duplicateCampaignRecordMock(...args),
   deleteCampaign: vi.fn(),
-  listCampaigns: vi.fn(),
+  listCampaigns: (...args: unknown[]) => listCampaignsMock(...args),
   findCampaignByPublicSlug: (...args: unknown[]) =>
     findCampaignByPublicSlugMock(...args),
 }));
@@ -38,6 +40,8 @@ vi.mock("@/repositories/contact", () => ({
 vi.mock("@/repositories/group", () => ({
   findExistingGroupIds: (...args: unknown[]) =>
     findExistingGroupIdsMock(...args),
+  findContactIdsByGroupIdsBatch: (...args: unknown[]) =>
+    findContactIdsByGroupIdsBatchMock(...args),
 }));
 
 vi.mock("@/repositories/template", () => ({
@@ -100,7 +104,67 @@ describe("CampaignService", () => {
     findContactIdsByGroupIdsMock.mockResolvedValue([]);
     findContactsByIdsMock.mockResolvedValue([]);
     findExistingGroupIdsMock.mockResolvedValue(new Set());
+    findContactIdsByGroupIdsBatchMock.mockResolvedValue(new Map());
     service = new CampaignService();
+  });
+
+  describe("listCampaigns", () => {
+    it("resolve os grupos de todas as campanhas da página em uma única query (evita N+1)", async () => {
+      const campaignA = {
+        ...sampleCampaign,
+        id: "campaign-a",
+        recipientContactIds: ["contact-1"],
+        recipientGroupIds: ["group-1"],
+      };
+      const campaignB = {
+        ...sampleCampaign,
+        id: "campaign-b",
+        recipientContactIds: [],
+        recipientGroupIds: ["group-2"],
+      };
+      listCampaignsMock.mockResolvedValue({
+        items: [campaignA, campaignB],
+        total: 2,
+      });
+      findContactIdsByGroupIdsBatchMock.mockResolvedValue(
+        new Map([
+          ["group-1", ["contact-2"]],
+          ["group-2", ["contact-3", "contact-4"]],
+        ]),
+      );
+
+      const result = await service.listCampaigns({ page: 1, pageSize: 20 });
+
+      expect(findContactIdsByGroupIdsBatchMock).toHaveBeenCalledTimes(1);
+      expect(findContactIdsByGroupIdsBatchMock).toHaveBeenCalledWith([
+        "group-1",
+        "group-2",
+      ]);
+      // Nenhuma query de grupo por campanha — a resolução por item usa o mapa em lote.
+      expect(findContactIdsByGroupIdsMock).not.toHaveBeenCalled();
+
+      const dtoA = result.items.find((item) => item.id === "campaign-a");
+      const dtoB = result.items.find((item) => item.id === "campaign-b");
+      expect(dtoA?.resolvedRecipientContactIds.sort()).toEqual([
+        "contact-1",
+        "contact-2",
+      ]);
+      expect(dtoB?.resolvedRecipientContactIds.sort()).toEqual([
+        "contact-3",
+        "contact-4",
+      ]);
+    });
+
+    it("não consulta grupos quando nenhuma campanha da página tem recipientGroupIds", async () => {
+      listCampaignsMock.mockResolvedValue({
+        items: [{ ...sampleCampaign, recipientGroupIds: [] }],
+        total: 1,
+      });
+
+      await service.listCampaigns({ page: 1, pageSize: 20 });
+
+      expect(findContactIdsByGroupIdsBatchMock).toHaveBeenCalledWith([]);
+    });
   });
 
   it("salvar rascunho e retomar restaura conteúdo e progresso", async () => {

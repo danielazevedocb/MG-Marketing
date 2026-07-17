@@ -12,11 +12,9 @@ import {
   uploadFileMetadataSchema,
   validateFileMetadata,
 } from "@/schemas/file-upload";
-import {
-  getStorageService,
-  type R2StorageService,
-} from "@/services/storage";
+import { getStorageService, type R2StorageService } from "@/services/storage";
 import { optimizeImage, isOptimizableImage } from "@/utils/image-optimization";
+import { matchesDeclaredMimeType } from "@/utils/file-signature";
 
 export type ProcessUploadInput = {
   buffer: Buffer;
@@ -37,7 +35,9 @@ export type FileStorageServiceDeps = {
 export class FileStorageService {
   constructor(private readonly deps: FileStorageServiceDeps) {}
 
-  async uploadAndPersist(input: ProcessUploadInput): Promise<ProcessUploadResult> {
+  async uploadAndPersist(
+    input: ProcessUploadInput,
+  ): Promise<ProcessUploadResult> {
     const metadata = validateFileMetadata(
       uploadFileMetadataSchema.parse({
         type: input.type,
@@ -46,6 +46,15 @@ export class FileStorageService {
         size: input.buffer.byteLength,
       }),
     );
+
+    // O `mimeType` até aqui veio do cliente (`file.type`); confere contra o
+    // conteúdo real do arquivo antes de aceitar, para não confiar apenas no
+    // que o browser declarou.
+    if (!matchesDeclaredMimeType(input.buffer, metadata.mimeType)) {
+      throw new FileValidationError(
+        `O conteúdo do arquivo não corresponde ao tipo declarado (${metadata.mimeType}).`,
+      );
+    }
 
     let body = input.buffer;
     let mimeType = metadata.mimeType;

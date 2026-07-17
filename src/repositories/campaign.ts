@@ -15,6 +15,11 @@ export type CampaignWithRelations = Prisma.CampaignGetPayload<{
   include: { field: true; template: true };
 }>;
 
+/** Campos mínimos consumidos pela landing pública (`/c/[slug]`) — sem template. */
+export type PublicCampaignRecord = Prisma.CampaignGetPayload<{
+  select: { type: true; sentAt: true; field: true };
+}>;
+
 export type CampaignFieldData = {
   titulo?: string | null;
   subtitulo?: string | null;
@@ -183,10 +188,10 @@ export async function findCampaignById(
  */
 export async function findCampaignByPublicSlug(
   slug: string,
-): Promise<CampaignWithRelations | null> {
+): Promise<PublicCampaignRecord | null> {
   return prisma.campaign.findFirst({
     where: { publicSlug: slug, status: CampaignStatus.sent },
-    include: campaignInclude,
+    select: { type: true, sentAt: true, field: true },
   });
 }
 

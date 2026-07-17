@@ -27,7 +27,10 @@ import {
   findContactIdsByGroupIds,
   findContactsByIds,
 } from "@/repositories/contact";
-import { findExistingGroupIds } from "@/repositories/group";
+import {
+  findContactIdsByGroupIdsBatch,
+  findExistingGroupIds,
+} from "@/repositories/group";
 import { findTemplateById } from "@/repositories/template";
 import {
   campaignFieldSchema,
@@ -217,11 +220,16 @@ async function resolveRecipientContactIds(
 
 async function toCampaignDto(
   campaign: CampaignWithRelations,
+  // Permite reaproveitar uma resolução já feita em lote (ver `listCampaigns`)
+  // e evitar uma query de grupos por campanha ao montar uma página inteira.
+  precomputedResolvedRecipientContactIds?: string[],
 ): Promise<CampaignDto> {
-  const resolvedRecipientContactIds = await resolveRecipientContactIds(
-    campaign.recipientContactIds,
-    campaign.recipientGroupIds,
-  );
+  const resolvedRecipientContactIds =
+    precomputedResolvedRecipientContactIds ??
+    (await resolveRecipientContactIds(
+      campaign.recipientContactIds,
+      campaign.recipientGroupIds,
+    ));
 
   return {
     id: campaign.id,
@@ -614,8 +622,28 @@ export class CampaignService {
 
     const result: CampaignListResult = await listCampaigns(query);
 
+    // Resolve os grupos de todas as campanhas da página em uma única query
+    // (em vez de uma consulta de grupos por campanha dentro de `toCampaignDto`).
+    const uniqueGroupIds = [
+      ...new Set(result.items.flatMap((item) => item.recipientGroupIds)),
+    ];
+    const groupContactsMap =
+      await findContactIdsByGroupIdsBatch(uniqueGroupIds);
+
+    const items = await Promise.all(
+      result.items.map((item) => {
+        const fromGroups = item.recipientGroupIds.flatMap(
+          (groupId) => groupContactsMap.get(groupId) ?? [],
+        );
+        const resolvedRecipientContactIds = [
+          ...new Set([...item.recipientContactIds, ...fromGroups]),
+        ];
+        return toCampaignDto(item, resolvedRecipientContactIds);
+      }),
+    );
+
     return {
-      items: await Promise.all(result.items.map(toCampaignDto)),
+      items,
       total: result.total,
       page: parsed.page,
       pageSize: parsed.pageSize,
@@ -760,6 +788,7 @@ export function setCampaignServiceForTests(
 
 export {
   fieldInputToData,
+  fieldToDto,
   fieldToInput,
   resolveRecipientContactIds,
   toCampaignDto,
