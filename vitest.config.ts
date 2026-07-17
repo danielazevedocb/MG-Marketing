@@ -11,5 +11,16 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     css: true,
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/**/*.{test,spec}.{ts,tsx}",
+        "src/**/__tests__/**",
+        "src/generated/**",
+        "src/components/ui/**",
+      ],
+    },
   },
 });
