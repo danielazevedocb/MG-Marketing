@@ -1,4 +1,12 @@
 {
-  "enabledMcpjsonServers": ["supabase"],
-  "enableAllProjectMcpServers": true
+  "permissions": {
+    "allow": [
+      "mcp__claude_ai_Supabase__get_project",
+      "mcp__claude_ai_Supabase__get_cost",
+      "mcp__claude_ai_Supabase__confirm_cost",
+      "mcp__claude_ai_Supabase__create_project"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["supabase"]
 }
