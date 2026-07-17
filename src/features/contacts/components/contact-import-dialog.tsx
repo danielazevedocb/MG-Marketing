@@ -124,10 +124,17 @@ export function ContactImportDialog({ onImported }: ContactImportDialogProps) {
             </Button>
           </div>
 
-          {error ? <p className="text-destructive text-sm">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="text-destructive text-sm">
+              {error}
+            </p>
+          ) : null}
 
           {result ? (
-            <div className="bg-muted/40 space-y-2 rounded-md border p-3 text-sm">
+            <div
+              role="status"
+              className="bg-muted/40 space-y-2 rounded-md border p-3 text-sm"
+            >
               <p>
                 <strong>{result.imported}</strong> importado(s),{" "}
                 <strong>{result.skipped}</strong> ignorado(s).

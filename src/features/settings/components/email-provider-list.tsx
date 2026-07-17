@@ -10,6 +10,14 @@ import {
 } from "@/actions/email-providers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { EmailProviderDto } from "@/services/email-providers";
 import { ProviderType } from "@/generated/prisma/enums";
 
@@ -44,6 +52,9 @@ export function EmailProviderList({
     Record<string, { success: boolean; message: string }>
   >({});
   const [isPending, startTransition] = useTransition();
+  const [deleteTarget, setDeleteTarget] = useState<EmailProviderDto | null>(
+    null,
+  );
 
   function handleActivate(id: string) {
     setPendingId(id);
@@ -56,10 +67,10 @@ export function EmailProviderList({
     });
   }
 
-  function handleDelete(id: string) {
-    if (!window.confirm("Excluir este provedor de email?")) {
-      return;
-    }
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeleteTarget(null);
 
     setPendingId(id);
     startTransition(async () => {
@@ -114,7 +125,7 @@ export function EmailProviderList({
 
   if (error) {
     return (
-      <p className="text-destructive text-sm">
+      <p role="alert" className="text-destructive text-sm">
         Não foi possível carregar os provedores: {error}
       </p>
     );
@@ -222,7 +233,7 @@ export function EmailProviderList({
                     size="sm"
                     variant="outline"
                     disabled={busy}
-                    onClick={() => handleDelete(provider.id)}
+                    onClick={() => setDeleteTarget(provider)}
                   >
                     <Trash2 className="size-4" />
                     Excluir
@@ -233,6 +244,7 @@ export function EmailProviderList({
 
             {feedback ? (
               <p
+                role={feedback.success ? "status" : "alert"}
                 className={
                   feedback.success
                     ? "mt-3 text-sm text-emerald-600"
@@ -245,6 +257,41 @@ export function EmailProviderList({
           </article>
         );
       })}
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={() => setDeleteTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir provedor de email</DialogTitle>
+            <DialogDescription className="wrap-anywhere">
+              Excluir{" "}
+              <span className="text-foreground font-medium">
+                &ldquo;{deleteTarget?.name}&rdquo;
+              </span>
+              ? Campanhas que usam este provedor deixarão de enviar até que
+              outro seja ativado.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              disabled={isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isPending}
+            >
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

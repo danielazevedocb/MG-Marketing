@@ -43,10 +43,11 @@ export function ScheduledCampaignControls({
   const [isPending, startTransition] = useTransition();
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [rescheduleAt, setRescheduleAt] = useState(campaign.scheduledAt ?? "");
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function handleCancel() {
-    if (!confirm("Cancelar o agendamento desta campanha?")) return;
+  function confirmCancel() {
+    setCancelConfirmOpen(false);
 
     startTransition(async () => {
       setError(null);
@@ -104,7 +105,7 @@ export function ScheduledCampaignControls({
           variant="outline"
           size="sm"
           disabled={disabled || isPending}
-          onClick={handleCancel}
+          onClick={() => setCancelConfirmOpen(true)}
         >
           <X className="size-4" />
           Cancelar
@@ -112,8 +113,40 @@ export function ScheduledCampaignControls({
       </div>
 
       {error ? (
-        <p className="text-destructive text-sm">{error}</p>
+        <p role="alert" className="text-destructive text-sm">
+          {error}
+        </p>
       ) : null}
+
+      <Dialog open={cancelConfirmOpen} onOpenChange={setCancelConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar agendamento</DialogTitle>
+            <DialogDescription>
+              Cancelar o agendamento desta campanha? Ela volta a ser um rascunho
+              e não será enviada automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => setCancelConfirmOpen(false)}
+            >
+              Voltar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isPending}
+              onClick={confirmCancel}
+            >
+              Cancelar agendamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
         <DialogContent>
@@ -135,7 +168,9 @@ export function ScheduledCampaignControls({
           </div>
 
           {error ? (
-            <p className="text-destructive text-sm">{error}</p>
+            <p role="alert" className="text-destructive text-sm">
+              {error}
+            </p>
           ) : null}
 
           <DialogFooter>

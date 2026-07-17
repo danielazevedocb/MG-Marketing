@@ -128,6 +128,7 @@ export function CampaignList({
 }: CampaignListProps) {
   const [isPending, startTransition] = useTransition();
   const [resendTarget, setResendTarget] = useState<CampaignDto | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CampaignDto | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   function handleDuplicate(id: string, nome: string) {
@@ -142,13 +143,12 @@ export function CampaignList({
     });
   }
 
-  function handleDelete(id: string, nome: string) {
-    if (
-      !confirm(`Excluir a campanha "${nome}"? Esta ação não pode ser desfeita.`)
-    )
-      return;
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    const targetId = deleteTarget.id;
+    setDeleteTarget(null);
     startTransition(async () => {
-      const result = await deleteCampaignAction(id);
+      const result = await deleteCampaignAction(targetId);
       if (result.success) {
         toast.success("Campanha excluída.");
         onChanged();
@@ -186,7 +186,10 @@ export function CampaignList({
 
   if (error) {
     return (
-      <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm">
+      <div
+        role="alert"
+        className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm"
+      >
         {error}
       </div>
     );
@@ -304,7 +307,7 @@ export function CampaignList({
                       variant="outline"
                       size="sm"
                       disabled={isPending}
-                      onClick={() => handleDelete(campaign.id, campaign.nome)}
+                      onClick={() => setDeleteTarget(campaign)}
                       className="text-destructive hover:text-destructive"
                     >
                       <Trash2 className="size-4" />
@@ -376,6 +379,41 @@ export function CampaignList({
             <Button onClick={confirmResend} disabled={isPending}>
               <Send className="size-4" />
               Reenviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={() => setDeleteTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir campanha</DialogTitle>
+            <DialogDescription className="wrap-anywhere">
+              Excluir{" "}
+              <span className="text-foreground font-medium">
+                &ldquo;{deleteTarget?.nome}&rdquo;
+              </span>
+              ? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              disabled={isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isPending}
+            >
+              <Trash2 className="size-4" />
+              Excluir
             </Button>
           </DialogFooter>
         </DialogContent>

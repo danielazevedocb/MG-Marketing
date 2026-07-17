@@ -269,7 +269,7 @@ function GalleryField({ disabled }: { disabled: boolean }) {
                           disabled={disabled}
                           onClick={() => removeAt(index)}
                           aria-label={`Remover imagem ${index + 1} da galeria`}
-                          className="bg-background/80 text-foreground hover:bg-destructive hover:text-destructive-foreground absolute top-1 right-1 rounded-full p-1 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                          className="bg-background/80 text-foreground hover:bg-destructive hover:text-destructive-foreground absolute top-1 right-1 rounded-full p-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
                         >
                           <X className="size-3.5" />
                         </button>

@@ -11,6 +11,14 @@ import {
 } from "@/actions/contacts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 type GroupItem = {
@@ -41,6 +49,11 @@ export function OrganizationPanel({
   const [tagName, setTagName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: "group" | "tag";
+    id: string;
+    nome: string;
+  } | null>(null);
 
   function handleCreateGroup() {
     if (!groupName.trim()) return;
@@ -72,30 +85,21 @@ export function OrganizationPanel({
     });
   }
 
-  function handleDeleteGroup(id: string, nome: string) {
-    if (!confirm(`Remover o grupo "${nome}"? Esta ação não pode ser desfeita.`))
-      return;
-    startTransition(async () => {
-      const result = await deleteGroupAction(id);
-      if (!result.success) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success("Grupo removido.");
-      onChanged();
-    });
-  }
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    const { type, id } = deleteTarget;
+    setDeleteTarget(null);
 
-  function handleDeleteTag(id: string, nome: string) {
-    if (!confirm(`Remover a tag "${nome}"? Esta ação não pode ser desfeita.`))
-      return;
     startTransition(async () => {
-      const result = await deleteTagAction(id);
+      const result =
+        type === "group"
+          ? await deleteGroupAction(id)
+          : await deleteTagAction(id);
       if (!result.success) {
         toast.error(result.error);
         return;
       }
-      toast.success("Tag removida.");
+      toast.success(type === "group" ? "Grupo removido." : "Tag removida.");
       onChanged();
     });
   }
@@ -134,7 +138,13 @@ export function OrganizationPanel({
                 variant="ghost"
                 size="sm"
                 disabled={isPending}
-                onClick={() => handleDeleteGroup(group.id, group.nome)}
+                onClick={() =>
+                  setDeleteTarget({
+                    type: "group",
+                    id: group.id,
+                    nome: group.nome,
+                  })
+                }
               >
                 Remover
               </Button>
@@ -175,7 +185,9 @@ export function OrganizationPanel({
                 variant="ghost"
                 size="sm"
                 disabled={isPending}
-                onClick={() => handleDeleteTag(tag.id, tag.nome)}
+                onClick={() =>
+                  setDeleteTarget({ type: "tag", id: tag.id, nome: tag.nome })
+                }
               >
                 Remover
               </Button>
@@ -185,8 +197,46 @@ export function OrganizationPanel({
       </div>
 
       {error ? (
-        <p className="text-destructive text-sm lg:col-span-2">{error}</p>
+        <p role="alert" className="text-destructive text-sm lg:col-span-2">
+          {error}
+        </p>
       ) : null}
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={() => setDeleteTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {deleteTarget?.type === "group" ? "Remover grupo" : "Remover tag"}
+            </DialogTitle>
+            <DialogDescription className="wrap-anywhere">
+              Remover{" "}
+              <span className="text-foreground font-medium">
+                &ldquo;{deleteTarget?.nome}&rdquo;
+              </span>
+              ? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              disabled={isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isPending}
+            >
+              Remover
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

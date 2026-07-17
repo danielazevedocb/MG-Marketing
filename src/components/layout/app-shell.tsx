@@ -108,8 +108,17 @@ export function AppShell({
 }: AppNavProps & { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
+      <a
+        href="#main-content"
+        className="bg-background text-foreground focus-visible:outline-ring sr-only rounded-md border px-4 py-2 text-sm font-medium focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus-visible:outline-2 focus-visible:outline-offset-2"
+      >
+        Pular para o conteúdo
+      </a>
       <AppNav active={active} />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
+      <main
+        id="main-content"
+        className="mx-auto w-full max-w-6xl flex-1 px-6 py-8"
+      >
         {children}
       </main>
     </div>

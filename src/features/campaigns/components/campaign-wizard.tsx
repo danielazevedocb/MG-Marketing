@@ -4,8 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useForm, type UseFormReturn } from "react-hook-form";
+import type { ZodError, ZodType } from "zod";
 
 import {
   advanceCampaignWizardStepAction,
@@ -40,8 +41,18 @@ import { WIZARD_STEP_META } from "@/features/campaigns/lib/wizard-steps";
 import { Channel } from "@/generated/prisma/enums";
 import {
   CAMPAIGN_TYPE_LABELS,
+  campaignChannelStepSchema,
+  campaignContactsStepSchema,
+  campaignContentStepSchema,
+  campaignCreateStepSchema,
+  campaignGroupsStepSchema,
+  campaignImageStepSchema,
+  campaignScheduleStepSchema,
+  campaignTemplateStepSchema,
+  campaignTypeStepSchema,
   CHANNEL_LABELS,
   emptyFieldInput,
+  formatZodValidationError,
   getPreviousWizardStep,
   WIZARD_STEPS,
   type CampaignWizardStateInput,
@@ -53,6 +64,21 @@ type CampaignWizardProps = {
   mode: "create" | "edit";
   initialCampaign?: CampaignDto;
   canSend: boolean;
+};
+
+// Valida o payload de cada etapa no cliente antes do round-trip ao servidor,
+// para o usuário ver o erro imediatamente (sem depender da resposta da action).
+// Etapas sem schema próprio ("preview") não têm payload a validar.
+const WIZARD_STEP_SCHEMAS: Partial<Record<WizardStep, ZodType>> = {
+  criar: campaignCreateStepSchema,
+  tipo: campaignTypeStepSchema,
+  template: campaignTemplateStepSchema,
+  conteudo: campaignContentStepSchema,
+  imagem: campaignImageStepSchema,
+  contatos: campaignContactsStepSchema,
+  grupos: campaignGroupsStepSchema,
+  canal: campaignChannelStepSchema,
+  enviar: campaignScheduleStepSchema,
 };
 
 function buildDefaultValues(campaign?: CampaignDto): CampaignWizardStateInput {
@@ -98,6 +124,20 @@ function buildDefaultValues(campaign?: CampaignDto): CampaignWizardStateInput {
   };
 }
 
+// Reflete os issues do Zod nos campos do formulário (o path do issue já bate com
+// o `name` usado pelos `FormField` do wizard, ex.: "field.titulo", "channels").
+function applyZodErrorsToForm(
+  form: UseFormReturn<CampaignWizardStateInput>,
+  error: ZodError,
+) {
+  for (const issue of error.issues) {
+    const path = issue.path.join(".");
+    if (path) {
+      form.setError(path as never, { type: "manual", message: issue.message });
+    }
+  }
+}
+
 export function CampaignWizard({
   mode,
   initialCampaign,
@@ -115,6 +155,7 @@ export function CampaignWizard({
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
     "idle",
   );
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const form = useForm<CampaignWizardStateInput>({
     defaultValues: buildDefaultValues(initialCampaign),
@@ -179,6 +220,12 @@ export function CampaignWizard({
     },
   });
 
+  // Move o foco para o título da etapa a cada navegação (avançar/voltar), para
+  // que usuários de teclado e leitor de tela não fiquem presos no botão anterior.
+  useEffect(() => {
+    stepHeadingRef.current?.focus();
+  }, [currentStep]);
+
   function getStepPayload(step: WizardStep, values: CampaignWizardStateInput) {
     switch (step) {
       case "criar":
@@ -217,7 +264,19 @@ export function CampaignWizard({
 
   function handleAdvance() {
     setServerError(null);
+    form.clearErrors();
     const values = form.getValues();
+
+    const payload = getStepPayload(currentStep, values);
+    const stepSchema = WIZARD_STEP_SCHEMAS[currentStep];
+    if (stepSchema) {
+      const parsed = stepSchema.safeParse(payload);
+      if (!parsed.success) {
+        applyZodErrorsToForm(form, parsed.error);
+        setServerError(formatZodValidationError(parsed.error));
+        return;
+      }
+    }
 
     startTransition(async () => {
       let id = campaignId;
@@ -237,7 +296,6 @@ export function CampaignWizard({
         return;
       }
 
-      const payload = getStepPayload(currentStep, values);
       const result = await advanceCampaignWizardStepAction(
         id,
         currentStep,
@@ -277,6 +335,8 @@ export function CampaignWizard({
   function handleBack() {
     const previous = getPreviousWizardStep(currentStep);
     if (previous) {
+      setServerError(null);
+      form.clearErrors();
       setCurrentStep(previous);
       form.setValue("wizardStep", previous);
     }
@@ -356,7 +416,13 @@ export function CampaignWizard({
               <p className="text-muted-foreground text-sm">
                 Etapa {stepIndex + 1} de {WIZARD_STEPS.length}
               </p>
-              <h2 className="text-xl font-semibold">{stepMeta.title}</h2>
+              <h2
+                ref={stepHeadingRef}
+                tabIndex={-1}
+                className="text-xl font-semibold"
+              >
+                {stepMeta.title}
+              </h2>
               <p className="text-muted-foreground mt-1 text-sm">
                 {stepMeta.description}
               </p>
@@ -374,7 +440,15 @@ export function CampaignWizard({
             ) : null}
           </div>
 
-          <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
+          <div
+            role="progressbar"
+            aria-label="Progresso do formulário"
+            aria-valuemin={1}
+            aria-valuemax={WIZARD_STEPS.length}
+            aria-valuenow={stepIndex + 1}
+            aria-valuetext={`Etapa ${stepIndex + 1} de ${WIZARD_STEPS.length}`}
+            className="bg-muted h-1.5 w-full overflow-hidden rounded-full"
+          >
             <div
               className="bg-primary h-full transition-all"
               style={{
@@ -385,7 +459,10 @@ export function CampaignWizard({
         </div>
 
         {serverError ? (
-          <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm">
+          <div
+            role="alert"
+            className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm"
+          >
             {serverError}
           </div>
         ) : null}
@@ -482,37 +559,39 @@ export function CampaignWizard({
               name="recipientContactIds"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Contatos</FormLabel>
                   <FormControl>
-                    <div className="border-border max-h-64 space-y-2 overflow-y-auto rounded-md border p-3">
-                      {(contactsQuery.data ?? []).map((contact) => {
-                        const checked = field.value.includes(contact.id);
-                        return (
-                          <label
-                            key={contact.id}
-                            className="hover:bg-muted/50 flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              disabled={isPending}
-                              onChange={(event) => {
-                                const next = event.target.checked
-                                  ? [...field.value, contact.id]
-                                  : field.value.filter(
-                                      (id) => id !== contact.id,
-                                    );
-                                field.onChange(next);
-                              }}
-                            />
-                            <span>
-                              {contact.empresa}
-                              {contact.nome ? ` · ${contact.nome}` : ""}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium">Contatos</legend>
+                      <div className="border-border max-h-64 space-y-2 overflow-y-auto rounded-md border p-3">
+                        {(contactsQuery.data ?? []).map((contact) => {
+                          const checked = field.value.includes(contact.id);
+                          return (
+                            <label
+                              key={contact.id}
+                              className="hover:bg-muted/50 flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={isPending}
+                                onChange={(event) => {
+                                  const next = event.target.checked
+                                    ? [...field.value, contact.id]
+                                    : field.value.filter(
+                                        (id) => id !== contact.id,
+                                      );
+                                  field.onChange(next);
+                                }}
+                              />
+                              <span>
+                                {contact.empresa}
+                                {contact.nome ? ` · ${contact.nome}` : ""}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -526,34 +605,38 @@ export function CampaignWizard({
               name="recipientGroupIds"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Grupos</FormLabel>
                   <FormControl>
-                    <div className="border-border max-h-64 space-y-2 overflow-y-auto rounded-md border p-3">
-                      {(groupsQuery.data ?? []).map((group) => {
-                        const checked = field.value.includes(group.id);
-                        return (
-                          <label
-                            key={group.id}
-                            className="hover:bg-muted/50 flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              disabled={isPending}
-                              onChange={(event) => {
-                                const next = event.target.checked
-                                  ? [...field.value, group.id]
-                                  : field.value.filter((id) => id !== group.id);
-                                field.onChange(next);
-                              }}
-                            />
-                            <span>
-                              {group.nome} ({group._count.contacts} contatos)
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium">Grupos</legend>
+                      <div className="border-border max-h-64 space-y-2 overflow-y-auto rounded-md border p-3">
+                        {(groupsQuery.data ?? []).map((group) => {
+                          const checked = field.value.includes(group.id);
+                          return (
+                            <label
+                              key={group.id}
+                              className="hover:bg-muted/50 flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={isPending}
+                                onChange={(event) => {
+                                  const next = event.target.checked
+                                    ? [...field.value, group.id]
+                                    : field.value.filter(
+                                        (id) => id !== group.id,
+                                      );
+                                  field.onChange(next);
+                                }}
+                              />
+                              <span>
+                                {group.nome} ({group._count.contacts} contatos)
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -567,45 +650,53 @@ export function CampaignWizard({
               name="channels"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Canais de envio</FormLabel>
-                  <div className="flex flex-wrap gap-3">
-                    {Object.entries(CHANNEL_LABELS).map(([value, label]) => {
-                      const channel = value as Channel;
-                      const isWhatsApp = channel === Channel.WhatsApp;
-                      const checked = field.value.includes(channel);
-                      return (
-                        <label
-                          key={value}
-                          className={`border-input flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${isWhatsApp ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-                          title={
-                            isWhatsApp
-                              ? "Integração em desenvolvimento"
-                              : undefined
-                          }
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            disabled={isPending || isWhatsApp}
-                            onChange={(event) => {
-                              const next = event.target.checked
-                                ? [...field.value, channel]
-                                : field.value.filter(
-                                    (item) => item !== channel,
-                                  );
-                              field.onChange(next);
-                            }}
-                          />
-                          {label}
-                          {isWhatsApp ? (
-                            <span className="text-muted-foreground text-xs">
-                              (em breve)
-                            </span>
-                          ) : null}
-                        </label>
-                      );
-                    })}
-                  </div>
+                  <FormControl>
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium">
+                        Canais de envio
+                      </legend>
+                      <div className="flex flex-wrap gap-3">
+                        {Object.entries(CHANNEL_LABELS).map(
+                          ([value, label]) => {
+                            const channel = value as Channel;
+                            const isWhatsApp = channel === Channel.WhatsApp;
+                            const checked = field.value.includes(channel);
+                            return (
+                              <label
+                                key={value}
+                                className={`border-input flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${isWhatsApp ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+                                title={
+                                  isWhatsApp
+                                    ? "Integração em desenvolvimento"
+                                    : undefined
+                                }
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  disabled={isPending || isWhatsApp}
+                                  onChange={(event) => {
+                                    const next = event.target.checked
+                                      ? [...field.value, channel]
+                                      : field.value.filter(
+                                          (item) => item !== channel,
+                                        );
+                                    field.onChange(next);
+                                  }}
+                                />
+                                {label}
+                                {isWhatsApp ? (
+                                  <span className="text-muted-foreground text-xs">
+                                    (em breve)
+                                  </span>
+                                ) : null}
+                              </label>
+                            );
+                          },
+                        )}
+                      </div>
+                    </fieldset>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
