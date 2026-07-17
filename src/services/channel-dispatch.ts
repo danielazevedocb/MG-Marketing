@@ -3,6 +3,7 @@ import { Channel, SendStatus } from "@/generated/prisma/enums";
 import { CampaignValidationError } from "@/lib/campaign-errors";
 import { NoActiveEmailProviderError } from "@/lib/sending-errors";
 import { auditLog } from "@/services/audit-log";
+import { mapWithConcurrencyLimit } from "@/lib/concurrency";
 import { buildCampaignPublicUrl, generatePublicSlug } from "@/lib/public-slug";
 import {
   claimDraftCampaignForDispatch,
@@ -15,6 +16,7 @@ import { createSendHistory } from "@/repositories/send-history";
 import type { CampaignFieldInput } from "@/schemas/campaign";
 import {
   assertCampaignContentComplete,
+  fieldToDto,
   fieldToInput,
 } from "@/services/campaigns";
 import {
@@ -53,6 +55,10 @@ type DispatchRecipient = {
 
 const NO_EMAIL_PROVIDER_MESSAGE =
   "Nenhum provedor de email ativo. Configure um provedor em Configurações > Email antes de enviar.";
+
+// Limite de envios de email simultâneos por campanha — evita disparar centenas de
+// requisições ao provedor SMTP/API de uma vez e reduz risco de timeout de função serverless.
+const EMAIL_SEND_CONCURRENCY = 5;
 
 async function resolveRecipients(
   contactIds: string[],
@@ -128,41 +134,9 @@ export class ChannelDispatchService {
       throw new CampaignValidationError("Selecione ao menos um destinatário");
     }
 
-    const content = fieldToInput(
-      campaign.field
-        ? {
-            titulo: campaign.field.titulo,
-            subtitulo: campaign.field.subtitulo,
-            texto: campaign.field.texto,
-            banner: campaign.field.banner,
-            imagem: campaign.field.imagem,
-            imagens: campaign.field.imagens ?? [],
-            link: campaign.field.link,
-            botao: campaign.field.botao,
-            preco: campaign.field.preco,
-            desconto: campaign.field.desconto,
-            validade: campaign.field.validade?.toISOString() ?? null,
-            observacoes: campaign.field.observacoes,
-          }
-        : null,
-    );
+    const content = fieldToInput(fieldToDto(campaign.field));
 
     assertCampaignContentComplete(content);
-
-    // Sem link customizado: gera a landing page pública "Saiba mais" e usa a
-    // URL dela como destino do CTA (email) e do link (WhatsApp).
-    let landingUrl: string | null = null;
-    if (!content.link?.trim()) {
-      const slug = campaign.publicSlug ?? generatePublicSlug();
-      if (!campaign.publicSlug) {
-        await setCampaignPublicSlug(campaignId, slug);
-      }
-      landingUrl = buildCampaignPublicUrl(slug);
-      content.link = landingUrl;
-      content.botao = content.botao?.trim() || "Saiba mais";
-      // Persiste o que foi realmente enviado para preview/histórico pós-envio.
-      await updateCampaignFieldLink(campaignId, content.link, content.botao);
-    }
 
     const getActiveProvider =
       this.deps.getActiveProvider ?? getActiveEmailProviderContext;
@@ -181,11 +155,28 @@ export class ChannelDispatchService {
     }
 
     // Claim atômico: transiciona draft → sent; aborta se outra requisição concurrent chegou primeiro.
+    // Feito antes de qualquer escrita de efeito colateral (slug/link da landing) para que uma
+    // corrida perdida não deixe a campanha com dados persistidos por um envio que não aconteceu.
     const claimed = await claimDraftCampaignForDispatch(campaignId);
     if (!claimed) {
       throw new CampaignValidationError(
         "Apenas campanhas em rascunho podem ser enviadas agora",
       );
+    }
+
+    // Sem link customizado: gera a landing page pública "Saiba mais" e usa a
+    // URL dela como destino do CTA (email) e do link (WhatsApp).
+    let landingUrl: string | null = null;
+    if (!content.link?.trim()) {
+      const slug = campaign.publicSlug ?? generatePublicSlug();
+      if (!campaign.publicSlug) {
+        await setCampaignPublicSlug(campaignId, slug);
+      }
+      landingUrl = buildCampaignPublicUrl(slug);
+      content.link = landingUrl;
+      content.botao = content.botao?.trim() || "Saiba mais";
+      // Persiste o que foi realmente enviado para preview/histórico pós-envio.
+      await updateCampaignFieldLink(campaignId, content.link, content.botao);
     }
 
     const items: DispatchResultItem[] = [];
@@ -225,88 +216,96 @@ export class ChannelDispatchService {
 
     if (includesEmail) {
       if (!emailProviderContext) {
-        for (const recipient of recipients) {
-          await recordHistory(
-            {
-              campaignId,
-              userId: actorId,
+        const emailItems = await mapWithConcurrencyLimit(
+          recipients,
+          EMAIL_SEND_CONCURRENCY,
+          async (recipient) => {
+            const item: DispatchResultItem = {
               channel: Channel.Email,
               recipient: recipient.email?.trim() || recipient.id,
+              contactId: recipient.id,
               status: SendStatus.Falha,
               returnMessage: NO_EMAIL_PROVIDER_MESSAGE,
-            },
-            historyWriter,
-          );
-
-          items.push({
-            channel: Channel.Email,
-            recipient: recipient.email?.trim() || recipient.id,
-            contactId: recipient.id,
-            status: SendStatus.Falha,
-            returnMessage: NO_EMAIL_PROVIDER_MESSAGE,
-          });
-        }
-      } else {
-        const subject = buildEmailSubject(content);
-
-        for (const recipient of recipients) {
-          const email = recipient.email?.trim();
-          if (!email) {
-            const returnMessage = "Email ausente";
+            };
             await recordHistory(
               {
                 campaignId,
                 userId: actorId,
-                channel: Channel.Email,
-                recipient: recipient.id,
-                status: SendStatus.Falha,
-                returnMessage,
+                channel: item.channel,
+                recipient: item.recipient,
+                status: item.status,
+                returnMessage: item.returnMessage,
               },
               historyWriter,
             );
+            return item;
+          },
+        );
+        items.push(...emailItems);
+      } else {
+        const subject = buildEmailSubject(content);
 
-            items.push({
-              channel: Channel.Email,
-              recipient: recipient.id,
-              contactId: recipient.id,
-              status: SendStatus.Falha,
-              returnMessage,
-            });
-            continue;
-          }
+        const emailItems = await mapWithConcurrencyLimit(
+          recipients,
+          EMAIL_SEND_CONCURRENCY,
+          async (recipient) => {
+            const email = recipient.email?.trim();
+            if (!email) {
+              const item: DispatchResultItem = {
+                channel: Channel.Email,
+                recipient: recipient.id,
+                contactId: recipient.id,
+                status: SendStatus.Falha,
+                returnMessage: "Email ausente",
+              };
+              await recordHistory(
+                {
+                  campaignId,
+                  userId: actorId,
+                  channel: item.channel,
+                  recipient: item.recipient,
+                  status: item.status,
+                  returnMessage: item.returnMessage,
+                },
+                historyWriter,
+              );
+              return item;
+            }
 
-          const sendResult = await sendEmail(
-            { to: email, subject, content },
-            emailProviderContext,
-          );
+            const sendResult = await sendEmail(
+              { to: email, subject, content },
+              emailProviderContext,
+            );
 
-          const status = sendResult.success
-            ? SendStatus.Enviado
-            : SendStatus.Falha;
-          const returnMessage = sendResult.messageId
-            ? `${sendResult.message}${sendResult.messageId ? ` (id: ${sendResult.messageId})` : ""}`
-            : sendResult.message;
+            const status = sendResult.success
+              ? SendStatus.Enviado
+              : SendStatus.Falha;
+            const returnMessage = sendResult.messageId
+              ? `${sendResult.message}${sendResult.messageId ? ` (id: ${sendResult.messageId})` : ""}`
+              : sendResult.message;
 
-          await recordHistory(
-            {
-              campaignId,
-              userId: actorId,
+            const item: DispatchResultItem = {
               channel: Channel.Email,
               recipient: email,
+              contactId: recipient.id,
               status,
               returnMessage,
-            },
-            historyWriter,
-          );
-
-          items.push({
-            channel: Channel.Email,
-            recipient: email,
-            contactId: recipient.id,
-            status,
-            returnMessage,
-          });
-        }
+            };
+            await recordHistory(
+              {
+                campaignId,
+                userId: actorId,
+                channel: item.channel,
+                recipient: item.recipient,
+                status: item.status,
+                returnMessage: item.returnMessage,
+              },
+              historyWriter,
+            );
+            return item;
+          },
+        );
+        items.push(...emailItems);
       }
     }
 

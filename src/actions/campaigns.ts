@@ -1,13 +1,17 @@
 "use server";
 
 // Server Actions do módulo de campanhas — protegidas por RBAC no servidor.
-import { z } from "zod";
-import { ForbiddenError, UnauthorizedError } from "@/lib/auth-errors";
 import {
   CampaignValidationError,
   CampaignWizardError,
 } from "@/lib/campaign-errors";
 import { NoActiveEmailProviderError, SendingError } from "@/lib/sending-errors";
+import { checkRateLimit } from "@/lib/rate-limit";
+import {
+  mapActionError as mapActionErrorBase,
+  type ActionError,
+  type ActionSuccess,
+} from "@/lib/action-error";
 import {
   campaignListFiltersSchema,
   campaignWizardStateSchema,
@@ -27,34 +31,18 @@ import {
   type DispatchCampaignResult,
 } from "@/services/channel-dispatch";
 
-type ActionError = { success: false; error: string; status?: number };
-type ActionSuccess<T> = { success: true; data: T };
-
 export type CampaignActionResult<T> = ActionSuccess<T> | ActionError;
 
 function mapActionError(error: unknown): ActionError {
-  if (error instanceof UnauthorizedError) {
-    return { success: false, error: error.message, status: 401 };
-  }
-  if (error instanceof ForbiddenError) {
-    return { success: false, error: error.message, status: 403 };
-  }
-  if (error instanceof CampaignValidationError) {
-    return { success: false, error: error.message };
-  }
-  if (error instanceof CampaignWizardError) {
-    return { success: false, error: error.message };
-  }
-  if (error instanceof NoActiveEmailProviderError) {
-    return { success: false, error: error.message };
-  }
-  if (error instanceof SendingError) {
-    return { success: false, error: error.message };
-  }
-  if (error instanceof z.ZodError) {
-    return { success: false, error: formatZodValidationError(error) };
-  }
-  return { success: false, error: "Não foi possível concluir a operação." };
+  return mapActionErrorBase(error, {
+    knownErrors: [
+      CampaignValidationError,
+      CampaignWizardError,
+      NoActiveEmailProviderError,
+      SendingError,
+    ],
+    formatZodError: formatZodValidationError,
+  });
 }
 
 export async function listCampaignsAction(
@@ -208,11 +196,18 @@ export async function deleteCampaignAction(
   }
 }
 
+const SEND_RATE_LIMIT_MESSAGE =
+  "Muitos envios em pouco tempo. Aguarde alguns instantes e tente novamente.";
+
 export async function sendCampaignAction(
   id: string,
 ): Promise<CampaignActionResult<DispatchCampaignResult>> {
   try {
     const user = await requirePermission("campaigns:send");
+    const rateCheck = checkRateLimit(`campaign-send:${user.id}`);
+    if (!rateCheck.allowed) {
+      return { success: false, error: SEND_RATE_LIMIT_MESSAGE };
+    }
     const data = await getChannelDispatchService().dispatchCampaign(
       id,
       user.id,
@@ -228,6 +223,10 @@ export async function resendCampaignAction(
 ): Promise<CampaignActionResult<DispatchCampaignResult>> {
   try {
     const user = await requirePermission("campaigns:send");
+    const rateCheck = checkRateLimit(`campaign-send:${user.id}`);
+    if (!rateCheck.allowed) {
+      return { success: false, error: SEND_RATE_LIMIT_MESSAGE };
+    }
     const copy = await getCampaignService().resendCampaign(id, user.id);
 
     try {

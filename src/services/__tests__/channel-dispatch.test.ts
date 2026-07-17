@@ -235,6 +235,10 @@ describe("ChannelDispatchService", () => {
       service.dispatchCampaign("campaign-1", "user-1"),
     ).rejects.toBeInstanceOf(CampaignValidationError);
     expect(sendCampaignEmailMock).not.toHaveBeenCalled();
+    // Efeitos colaterais da landing (slug/link) não devem ser persistidos
+    // quando outra requisição já reivindicou a campanha antes desta.
+    expect(setCampaignPublicSlugMock).not.toHaveBeenCalled();
+    expect(updateCampaignFieldLinkMock).not.toHaveBeenCalled();
   });
 
   it("bloqueia envio quando o conteúdo está incompleto (título/texto vazios)", async () => {
@@ -313,6 +317,47 @@ describe("ChannelDispatchService", () => {
       expect.stringContaining(`/c/${"a".repeat(32)}`),
       "Saiba mais",
     );
+  });
+
+  it("envia para muitos destinatários em paralelo limitado preservando a ordem", async () => {
+    const manyContacts = Array.from({ length: 8 }, (_, index) => ({
+      id: `contact-${index + 1}`,
+      nome: `Contato ${index + 1}`,
+      empresa: "Empresa",
+      email: `contato${index + 1}@example.com`,
+      telefone: "123",
+      status: "Ativo",
+      groups: [],
+      tags: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    findCampaignByIdMock.mockResolvedValue({
+      ...baseCampaign,
+      channels: [Channel.Email],
+      recipientContactIds: manyContacts.map((contact) => contact.id),
+    });
+    resolveRecipientContactIdsMock.mockResolvedValue(
+      manyContacts.map((contact) => contact.id),
+    );
+    findContactsByIdsMock.mockResolvedValue(manyContacts);
+
+    // Simula latência assíncrona variável para expor eventuais problemas de
+    // concorrência (resultado fora de ordem, destinatário processado 2x etc.).
+    sendCampaignEmailMock.mockImplementation(async ({ to }: { to: string }) => {
+      await new Promise((resolve) => setTimeout(resolve, Math.random() * 5));
+      return { success: true, message: "ok", messageId: `id-${to}` };
+    });
+
+    const result = await service.dispatchCampaign("campaign-1", "user-1");
+
+    expect(sendCampaignEmailMock).toHaveBeenCalledTimes(8);
+    expect(createSendHistoryMock).toHaveBeenCalledTimes(8);
+    expect(result.items.map((item) => item.recipient)).toEqual(
+      manyContacts.map((contact) => contact.email),
+    );
+    expect(result.summary.success).toBe(8);
   });
 
   it("registra falha de email quando não há provedor ativo no canal ambos", async () => {

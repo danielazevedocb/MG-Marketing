@@ -265,6 +265,20 @@ export async function claimScheduledCampaign(id: string): Promise<boolean> {
   return result.count === 1;
 }
 
+/**
+ * Limpa a data de agendamento de uma campanha que ficou em `draft` após uma
+ * tentativa de disparo automático falhar (ex.: conteúdo incompleto). Sem isso,
+ * o `scheduledAt` continuaria apontando para uma data passada mesmo a campanha
+ * já não sendo mais `scheduled`, confundindo a UI. A campanha permanece como
+ * rascunho comum — o usuário precisa corrigir e reagendar/reenviar manualmente.
+ */
+export async function clearCampaignSchedule(id: string): Promise<void> {
+  await prisma.campaign.updateMany({
+    where: { id, status: CampaignStatus.draft },
+    data: { scheduledAt: null },
+  });
+}
+
 export async function listCampaigns(
   query: CampaignListQuery,
 ): Promise<CampaignListResult> {

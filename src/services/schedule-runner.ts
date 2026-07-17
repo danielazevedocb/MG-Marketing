@@ -3,6 +3,7 @@ import { CampaignValidationError } from "@/lib/campaign-errors";
 import { auditLog } from "@/services/audit-log";
 import {
   claimScheduledCampaign,
+  clearCampaignSchedule,
   findDueScheduledCampaigns,
 } from "@/repositories/campaign";
 import { getChannelDispatchService } from "@/services/channel-dispatch";
@@ -30,6 +31,7 @@ export class ScheduleRunnerService {
     private readonly deps: {
       findDue?: typeof findDueScheduledCampaigns;
       claim?: typeof claimScheduledCampaign;
+      clearSchedule?: typeof clearCampaignSchedule;
       dispatch?: (
         campaignId: string,
         actorId: string,
@@ -40,6 +42,7 @@ export class ScheduleRunnerService {
   async runDueCampaigns(limit = 50): Promise<ScheduleRunnerResult> {
     const findDue = this.deps.findDue ?? findDueScheduledCampaigns;
     const claim = this.deps.claim ?? claimScheduledCampaign;
+    const clearSchedule = this.deps.clearSchedule ?? clearCampaignSchedule;
     const dispatch =
       this.deps.dispatch ??
       ((campaignId, actorId) =>
@@ -98,6 +101,10 @@ export class ScheduleRunnerService {
           },
         });
 
+        // O claim já transicionou a campanha para `draft`; sem isto, `scheduledAt`
+        // continuaria com a data vencida mesmo fora do fluxo de agendamento.
+        await clearSchedule(campaign.id);
+
         items.push({
           campaignId: campaign.id,
           outcome: "failed",
@@ -106,7 +113,9 @@ export class ScheduleRunnerService {
       }
     }
 
-    const dispatched = items.filter((item) => item.outcome === "dispatched").length;
+    const dispatched = items.filter(
+      (item) => item.outcome === "dispatched",
+    ).length;
     const skipped = items.filter((item) => item.outcome === "skipped").length;
     const failed = items.filter((item) => item.outcome === "failed").length;
 

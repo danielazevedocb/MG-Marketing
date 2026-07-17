@@ -16,12 +16,15 @@ const findContactsByIdsMock = vi.fn();
 const resolveRecipientContactIdsMock = vi.fn();
 const setCampaignPublicSlugMock = vi.fn();
 const updateCampaignFieldLinkMock = vi.fn();
+const clearCampaignScheduleMock = vi.fn();
 
 vi.mock("@/repositories/campaign", () => ({
   findDueScheduledCampaigns: (...args: unknown[]) =>
     findDueScheduledCampaignsMock(...args),
   claimScheduledCampaign: (...args: unknown[]) =>
     claimScheduledCampaignMock(...args),
+  clearCampaignSchedule: (...args: unknown[]) =>
+    clearCampaignScheduleMock(...args),
   claimDraftCampaignForDispatch: (...args: unknown[]) =>
     claimDraftCampaignForDispatchMock(...args),
   findCampaignById: (...args: unknown[]) => findCampaignByIdMock(...args),
@@ -124,6 +127,7 @@ describe("Integração runner + sending", () => {
     claimDraftCampaignForDispatchMock.mockResolvedValue(true);
     setCampaignPublicSlugMock.mockResolvedValue(undefined);
     updateCampaignFieldLinkMock.mockResolvedValue(undefined);
+    clearCampaignScheduleMock.mockResolvedValue(undefined);
   });
 
   it("registra resultado da execução em SendHistory", async () => {

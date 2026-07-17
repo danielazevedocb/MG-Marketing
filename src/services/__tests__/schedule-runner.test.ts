@@ -9,6 +9,7 @@ import {
 
 const findDueScheduledCampaignsMock = vi.fn();
 const claimScheduledCampaignMock = vi.fn();
+const clearCampaignScheduleMock = vi.fn();
 const dispatchCampaignMock = vi.fn();
 const createAuditLogMock = vi.fn();
 
@@ -17,6 +18,8 @@ vi.mock("@/repositories/campaign", () => ({
     findDueScheduledCampaignsMock(...args),
   claimScheduledCampaign: (...args: unknown[]) =>
     claimScheduledCampaignMock(...args),
+  clearCampaignSchedule: (...args: unknown[]) =>
+    clearCampaignScheduleMock(...args),
 }));
 
 vi.mock("@/services/audit-log", () => ({
@@ -59,9 +62,11 @@ describe("ScheduleRunnerService", () => {
     service = new ScheduleRunnerService({
       findDue: findDueScheduledCampaignsMock,
       claim: claimScheduledCampaignMock,
+      clearSchedule: clearCampaignScheduleMock,
       dispatch: dispatchCampaignMock,
     });
     createAuditLogMock.mockResolvedValue({});
+    clearCampaignScheduleMock.mockResolvedValue(undefined);
   });
 
   it("dispara campanhas vencidas via sending e marca sent", async () => {
@@ -103,8 +108,13 @@ describe("ScheduleRunnerService", () => {
 
   it("registra falha sem interromper outras campanhas", async () => {
     const secondCampaign = { ...dueCampaign, id: "campaign-2" };
-    findDueScheduledCampaignsMock.mockResolvedValue([dueCampaign, secondCampaign]);
-    claimScheduledCampaignMock.mockResolvedValueOnce(true).mockResolvedValueOnce(true);
+    findDueScheduledCampaignsMock.mockResolvedValue([
+      dueCampaign,
+      secondCampaign,
+    ]);
+    claimScheduledCampaignMock
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true);
     dispatchCampaignMock
       .mockRejectedValueOnce(new Error("Falha de envio"))
       .mockResolvedValueOnce({
@@ -120,5 +130,31 @@ describe("ScheduleRunnerService", () => {
     expect(createAuditLogMock).toHaveBeenCalledWith(
       expect.objectContaining({ action: "campaign.scheduled_send_failed" }),
     );
+  });
+
+  it("limpa o agendamento da campanha que falhou para não ficar presa em draft", async () => {
+    findDueScheduledCampaignsMock.mockResolvedValue([dueCampaign]);
+    claimScheduledCampaignMock.mockResolvedValue(true);
+    dispatchCampaignMock.mockRejectedValue(
+      new Error("Conteúdo da campanha incompleto"),
+    );
+
+    await service.runDueCampaigns();
+
+    expect(clearCampaignScheduleMock).toHaveBeenCalledWith("campaign-1");
+  });
+
+  it("não limpa o agendamento quando o disparo é bem-sucedido", async () => {
+    findDueScheduledCampaignsMock.mockResolvedValue([dueCampaign]);
+    claimScheduledCampaignMock.mockResolvedValue(true);
+    dispatchCampaignMock.mockResolvedValue({
+      campaignId: "campaign-1",
+      items: [],
+      summary: { total: 0, success: 0, failure: 0 },
+    });
+
+    await service.runDueCampaigns();
+
+    expect(clearCampaignScheduleMock).not.toHaveBeenCalled();
   });
 });
