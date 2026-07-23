@@ -114,6 +114,7 @@ export function ContactsPageClient({ canWrite }: ContactsPageClientProps) {
         error={contactsQuery.error?.message}
         canWrite={canWrite}
         onPageChange={(page) => handleFiltersChange({ page })}
+        onDeleted={() => void contactsQuery.refetch()}
       />
 
       {canWrite ? (

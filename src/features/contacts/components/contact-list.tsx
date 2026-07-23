@@ -28,6 +28,7 @@ type ContactListProps = {
   error?: string;
   canWrite: boolean;
   onPageChange: (page: number) => void;
+  onDeleted: () => void;
 };
 
 export function ContactList({
@@ -39,6 +40,7 @@ export function ContactList({
   error,
   canWrite,
   onPageChange,
+  onDeleted,
 }: ContactListProps) {
   const [deleteTarget, setDeleteTarget] = useState<ContactDto | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -51,7 +53,7 @@ export function ContactList({
       const result = await deleteContactAction(deleteTarget.id);
       if (result.success) {
         setDeleteTarget(null);
-        onPageChange(page);
+        onDeleted();
       }
     });
   }
@@ -72,7 +74,9 @@ export function ContactList({
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-muted-foreground text-sm">
-          {isLoading ? "Carregando contatos..." : `${total} contato(s) encontrado(s)`}
+          {isLoading
+            ? "Carregando contatos..."
+            : `${total} contato(s) encontrado(s)`}
         </p>
         {canWrite ? (
           <Button asChild size="sm">
@@ -89,12 +93,22 @@ export function ContactList({
           <thead className="bg-muted/40 border-b">
             <tr className="text-muted-foreground text-left">
               <th className="px-4 py-3 font-medium">Empresa</th>
-              <th className="hidden px-4 py-3 font-medium md:table-cell">Contato</th>
-              <th className="hidden px-4 py-3 font-medium lg:table-cell">Telefone</th>
-              <th className="hidden px-4 py-3 font-medium lg:table-cell">E-mail</th>
+              <th className="hidden px-4 py-3 font-medium md:table-cell">
+                Contato
+              </th>
+              <th className="hidden px-4 py-3 font-medium lg:table-cell">
+                Telefone
+              </th>
+              <th className="hidden px-4 py-3 font-medium lg:table-cell">
+                E-mail
+              </th>
               <th className="px-4 py-3 font-medium">Status</th>
-              <th className="hidden px-4 py-3 font-medium xl:table-cell">Organização</th>
-              {canWrite ? <th className="px-4 py-3 font-medium">Ações</th> : null}
+              <th className="hidden px-4 py-3 font-medium xl:table-cell">
+                Organização
+              </th>
+              {canWrite ? (
+                <th className="px-4 py-3 font-medium">Ações</th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -132,18 +146,20 @@ export function ContactList({
               contacts.map((contact) => (
                 <tr key={contact.id} className="border-b last:border-b-0">
                   <td className="max-w-0 px-4 py-3">
-                    <div className="min-w-0 break-words font-medium">{contact.empresa}</div>
+                    <div className="min-w-0 font-medium break-words">
+                      {contact.empresa}
+                    </div>
                     <div className="text-muted-foreground mt-0.5 text-xs md:hidden">
                       {contact.telefone || contact.email || "—"}
                     </div>
                   </td>
-                  <td className="hidden px-4 py-3 md:table-cell">
+                  <td className="hidden max-w-0 truncate px-4 py-3 md:table-cell">
                     {contact.nome || "—"}
                   </td>
-                  <td className="hidden px-4 py-3 lg:table-cell">
+                  <td className="hidden max-w-0 truncate px-4 py-3 lg:table-cell">
                     {contact.telefone || "—"}
                   </td>
-                  <td className="hidden px-4 py-3 lg:table-cell">
+                  <td className="hidden max-w-0 truncate px-4 py-3 lg:table-cell">
                     {contact.email || "—"}
                   </td>
                   <td className="px-4 py-3">
@@ -227,13 +243,16 @@ export function ContactList({
         </div>
       ) : null}
 
-      <Dialog open={Boolean(deleteTarget)} onOpenChange={() => setDeleteTarget(null)}>
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={() => setDeleteTarget(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Excluir contato</DialogTitle>
             <DialogDescription className="wrap-anywhere">
               Tem certeza que deseja excluir{" "}
-              <span className="font-semibold text-foreground wrap-anywhere">
+              <span className="text-foreground font-semibold wrap-anywhere">
                 {deleteTarget?.empresa}
               </span>
               ? Esta ação não pode ser desfeita.

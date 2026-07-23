@@ -42,16 +42,22 @@ export type AuditLogParams = {
 };
 
 /// Registra uma entrada de auditoria com payload sanitizado (sem credenciais/segredos).
+/// Falha de auditoria não deve derrubar a operação de negócio que a originou —
+/// erro é logado e engolido aqui, nunca propagado ao chamador.
 export async function auditLog(params: AuditLogParams): Promise<void> {
   const payload = params.payload
     ? (sanitizeValue(params.payload) as Prisma.InputJsonValue)
     : undefined;
 
-  await createAuditLog({
-    actorId: params.actorId,
-    action: params.action,
-    entity: params.entity,
-    entityId: params.entityId,
-    payload,
-  });
+  try {
+    await createAuditLog({
+      actorId: params.actorId,
+      action: params.action,
+      entity: params.entity,
+      entityId: params.entityId,
+      payload,
+    });
+  } catch (error) {
+    console.error("[auditLog] falha ao registrar auditoria:", error);
+  }
 }

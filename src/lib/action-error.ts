@@ -51,5 +51,8 @@ export function mapActionError(
       error: formatZodError ? formatZodError(error) : fallbackMessage,
     };
   }
+  // Erro não reconhecido (ex.: violação de constraint no banco) — logar no
+  // servidor para não perder o rastro por trás da mensagem genérica ao cliente.
+  console.error("[mapActionError] erro não tratado:", error);
   return { success: false, error: fallbackMessage };
 }

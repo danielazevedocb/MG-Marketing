@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -13,6 +14,7 @@ import {
   updateContactAction,
   type ContactDto,
 } from "@/actions/contacts";
+import { formatPhoneBR } from "@/utils/format-phone";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -41,6 +43,7 @@ type ContactFormProps = {
 
 export function ContactForm({ mode, initialData }: ContactFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
   const [groups, setGroups] = useState<{ id: string; nome: string }[]>([]);
@@ -100,8 +103,8 @@ export function ContactForm({ mode, initialData }: ContactFormProps) {
         return;
       }
 
+      void queryClient.invalidateQueries({ queryKey: ["contacts"] });
       router.push("/contacts");
-      router.refresh();
     });
   }
 
@@ -179,6 +182,9 @@ export function ContactForm({ mode, initialData }: ContactFormProps) {
                     placeholder="(11) 99999-0000"
                     disabled={isPending}
                     {...field}
+                    onChange={(event) =>
+                      field.onChange(formatPhoneBR(event.target.value))
+                    }
                   />
                 </FormControl>
                 <FormMessage />
