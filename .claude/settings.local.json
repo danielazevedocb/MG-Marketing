@@ -4,7 +4,9 @@
       "mcp__claude_ai_Supabase__get_project",
       "mcp__claude_ai_Supabase__get_cost",
       "mcp__claude_ai_Supabase__confirm_cost",
-      "mcp__claude_ai_Supabase__create_project"
+      "mcp__claude_ai_Supabase__create_project",
+      "Bash(cat .mcp.json 2>/dev/null; echo \"---\"; cat ~/.claude.json 2>/dev/null | grep -i supabase; echo \"---settings---\"; find . -maxdepth 2 -iname \"*.mcp*\" 2>/dev/null)",
+      "Read(//home/danieldev/**)"
     ]
   },
   "enableAllProjectMcpServers": true,
