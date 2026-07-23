@@ -27,13 +27,17 @@ export type WhatsAppSendResult =
       message: string;
     };
 
-export function buildWhatsAppMessage(content: CampaignFieldInput): string {
-  return gerarMensagemWhatsApp(content);
+export function buildWhatsAppMessage(
+  content: CampaignFieldInput,
+  signature?: string | null,
+): string {
+  return gerarMensagemWhatsApp(content, signature);
 }
 
 export function generateWaMeLinkForPhone(
   telefone: string,
   content: CampaignFieldInput,
+  signature?: string | null,
 ):
   | { success: true; waMeUrl: string; normalizedPhone: string; message: string }
   | { success: false; reason: string } {
@@ -42,7 +46,7 @@ export function generateWaMeLinkForPhone(
     return { success: false, reason: normalized.reason };
   }
 
-  const message = buildWhatsAppMessage(content);
+  const message = buildWhatsAppMessage(content, signature);
   const waMeUrl = gerarLinkWaMe(normalized.normalized, message);
 
   return {
@@ -56,11 +60,13 @@ export function generateWaMeLinkForPhone(
 export function processWhatsAppRecipient(
   recipient: WhatsAppRecipient,
   content: CampaignFieldInput,
+  signature?: string | null,
 ): WhatsAppSendResult {
   const displayRecipient = recipient.telefone?.trim() || recipient.contactId;
   const linkResult = generateWaMeLinkForPhone(
     recipient.telefone ?? "",
     content,
+    signature,
   );
 
   if (!linkResult.success) {

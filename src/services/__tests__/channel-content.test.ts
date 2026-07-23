@@ -47,6 +47,29 @@ describe("gerarMensagemWhatsApp", () => {
 
     expect(message).toContain("Linha 1\nLinha 2");
   });
+
+  it("anexa a assinatura como último bloco quando informada", () => {
+    const message = gerarMensagemWhatsApp(
+      { ...emptyFieldInput(), titulo: "Título" },
+      "Equipe MG Marketing",
+    );
+
+    expect(message.endsWith("Equipe MG Marketing")).toBe(true);
+  });
+
+  it("não anexa bloco de assinatura quando não informada", () => {
+    const withoutSignature = gerarMensagemWhatsApp({
+      ...emptyFieldInput(),
+      titulo: "Título",
+    });
+    const withEmptySignature = gerarMensagemWhatsApp(
+      { ...emptyFieldInput(), titulo: "Título" },
+      "   ",
+    );
+
+    expect(withoutSignature).toBe("*Título*");
+    expect(withEmptySignature).toBe("*Título*");
+  });
 });
 
 describe("gerarHtmlEmail", () => {

@@ -60,6 +60,13 @@ vi.mock("@/services/email-send", () => ({
   sendCampaignEmail: vi.fn(),
 }));
 
+vi.mock("@/services/whatsapp-config", () => ({
+  getWhatsAppConfigService: () => ({
+    getConfig: vi.fn().mockResolvedValue(null),
+    updateConfig: vi.fn(),
+  }),
+}));
+
 import { ChannelDispatchService } from "@/services/channel-dispatch";
 import { ScheduleRunnerService } from "@/services/schedule-runner";
 

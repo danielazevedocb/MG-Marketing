@@ -20,6 +20,10 @@ const createAuditLogMock = vi.fn();
 const resolveRecipientContactIdsMock = vi.fn();
 const getActiveEmailProviderContextMock = vi.fn();
 const sendCampaignEmailMock = vi.fn();
+const whatsAppConfigServiceMock = {
+  getConfig: vi.fn().mockResolvedValue(null),
+  updateConfig: vi.fn(),
+};
 
 vi.mock("@/repositories/campaign", () => ({
   findCampaignById: (...args: unknown[]) => findCampaignByIdMock(...args),
@@ -56,6 +60,10 @@ vi.mock("@/services/email-send", () => ({
   getActiveEmailProviderContext: (...args: unknown[]) =>
     getActiveEmailProviderContextMock(...args),
   sendCampaignEmail: (...args: unknown[]) => sendCampaignEmailMock(...args),
+}));
+
+vi.mock("@/services/whatsapp-config", () => ({
+  getWhatsAppConfigService: () => whatsAppConfigServiceMock,
 }));
 
 import { ChannelDispatchService } from "@/services/channel-dispatch";

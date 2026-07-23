@@ -13,19 +13,19 @@ const settingsSections = [
     available: true,
   },
   {
-    href: "#",
+    href: "/settings/whatsapp",
     icon: MessageSquare,
     title: "WhatsApp",
     description:
-      "Conecte uma conta WhatsApp Business para enviar campanhas pelo canal.",
-    available: false,
+      "Nome, telefone e assinatura usados no envio manual de campanhas via wa.me.",
+    available: true,
   },
   {
-    href: "#",
+    href: "/settings/profile",
     icon: User,
     title: "Perfil",
     description: "Gerencie seus dados de acesso e preferências de conta.",
-    available: false,
+    available: true,
   },
 ] as const;
 

@@ -39,7 +39,12 @@ function appendBlock(lines: string[], block: string) {
 }
 
 /// Monta mensagem WhatsApp com destaques (*negrito*), itálico, emojis e links.
-export function gerarMensagemWhatsApp(conteudo: CampaignChannelContent): string {
+/// `signature` (opcional) vem da config em Configurações > WhatsApp e é
+/// anexada como último bloco, mesmo padrão do `footerText` do email.
+export function gerarMensagemWhatsApp(
+  conteudo: CampaignChannelContent,
+  signature?: string | null,
+): string {
   const lines: string[] = [];
 
   if (conteudo.titulo?.trim()) {
@@ -78,6 +83,10 @@ export function gerarMensagemWhatsApp(conteudo: CampaignChannelContent): string 
 
   if (conteudo.observacoes?.trim()) {
     appendBlock(lines, conteudo.observacoes.trim());
+  }
+
+  if (signature?.trim()) {
+    appendBlock(lines, signature.trim());
   }
 
   return lines.join("\n").trim();
@@ -184,8 +193,7 @@ export function gerarHtmlEmail(
 }
 
 export type PhoneNormalizationResult =
-  | { valid: true; normalized: string }
-  | { valid: false; reason: string };
+  { valid: true; normalized: string } | { valid: false; reason: string };
 
 /// Normaliza telefone brasileiro para DDI 55 (apenas dígitos).
 export function normalizarTelefoneWhatsApp(
@@ -213,7 +221,11 @@ export function normalizarTelefoneWhatsApp(
     normalized = `55${normalized}`;
   }
 
-  if (!normalized.startsWith("55") || normalized.length < 12 || normalized.length > 13) {
+  if (
+    !normalized.startsWith("55") ||
+    normalized.length < 12 ||
+    normalized.length > 13
+  ) {
     return { valid: false, reason: "Telefone inválido" };
   }
 
@@ -221,12 +233,18 @@ export function normalizarTelefoneWhatsApp(
 }
 
 /// Gera link wa.me com número normalizado e mensagem URL-encoded.
-export function gerarLinkWaMe(telefoneNormalizado: string, mensagem: string): string {
+export function gerarLinkWaMe(
+  telefoneNormalizado: string,
+  mensagem: string,
+): string {
   const encoded = encodeURIComponent(mensagem);
   return `https://wa.me/${telefoneNormalizado}?text=${encoded}`;
 }
 
 /// Link wa.me de exemplo para o preview (número fictício).
-export function buildWaMePreviewUrl(message: string, phone = "5511999999999"): string {
+export function buildWaMePreviewUrl(
+  message: string,
+  phone = "5511999999999",
+): string {
   return gerarLinkWaMe(phone, message);
 }

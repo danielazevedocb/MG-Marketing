@@ -23,6 +23,7 @@ import {
   getActiveEmailProviderContext,
   sendCampaignEmail,
 } from "@/services/email-send";
+import { getWhatsAppConfigService } from "@/services/whatsapp-config";
 import {
   processWhatsAppRecipient,
   type WhatsAppRecipient,
@@ -182,13 +183,21 @@ export class ChannelDispatchService {
     const items: DispatchResultItem[] = [];
 
     if (includesWhatsApp) {
+      // Buscada uma única vez por disparo (não por destinatário) — assinatura
+      // é a mesma para todos os itens da campanha.
+      const whatsappConfig = await getWhatsAppConfigService().getConfig();
+
       for (const recipient of recipients) {
         const waRecipient: WhatsAppRecipient = {
           contactId: recipient.id,
           telefone: recipient.telefone,
           nome: recipient.nome,
         };
-        const result = processWhatsAppRecipient(waRecipient, content);
+        const result = processWhatsAppRecipient(
+          waRecipient,
+          content,
+          whatsappConfig?.signature,
+        );
         const status = result.success ? SendStatus.Enviado : SendStatus.Falha;
         const returnMessage = result.success ? result.message : result.message;
 
