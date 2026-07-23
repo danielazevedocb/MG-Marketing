@@ -9,6 +9,7 @@ import {
   CampaignWizardError,
 } from "@/lib/campaign-errors";
 import { auditLog } from "@/services/audit-log";
+import { parseDateBr, toDateOnlyString } from "@/lib/date-format";
 import { publicSlugSchema } from "@/lib/public-slug";
 import {
   createCampaign,
@@ -182,6 +183,19 @@ function fieldToInput(field: CampaignFieldDto | null): CampaignFieldInput {
   };
 }
 
+/** Normaliza a validade em texto livre do template ("31/08/2026") para o
+ * formato ISO esperado pelo campo `validade` (DateTime na campanha). Some
+ * silenciosamente se não for uma data reconhecível — o usuário completa na
+ * etapa de Conteúdo, não trava o wizard por causa de um texto do template. */
+function normalizeTemplateValidade(value: string | undefined): string {
+  if (!value?.trim()) return "";
+  const brDate = parseDateBr(value);
+  if (brDate) return toDateOnlyString(brDate);
+
+  const isoDate = new Date(value);
+  return Number.isNaN(isoDate.getTime()) ? "" : value.trim();
+}
+
 export function templateContentToCampaignField(
   content: TemplateContentInput,
 ): CampaignFieldInput {
@@ -200,7 +214,7 @@ export function templateContentToCampaignField(
     botao: content.ctaTexto ?? "",
     preco: content.preco || content.precoOriginal || "",
     desconto: content.precoPromocional || "",
-    validade: content.validade ?? "",
+    validade: normalizeTemplateValidade(content.validade),
     observacoes,
   };
 }

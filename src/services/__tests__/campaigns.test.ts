@@ -55,6 +55,7 @@ vi.mock("@/services/audit-log", () => ({
 import {
   CampaignService,
   resolveRecipientContactIds,
+  templateContentToCampaignField,
 } from "@/services/campaigns";
 
 const sampleField = {
@@ -415,7 +416,27 @@ describe("CampaignService", () => {
     );
   });
 
-  it("rejeita campo numérico inválido", () => {
+  it("aceita preço/desconto em texto livre (nunca são usados como número)", () => {
+    const result = service.validateFieldContent({
+      titulo: "Título",
+      subtitulo: "",
+      texto: "Texto",
+      banner: "",
+      imagem: "",
+      imagens: [],
+      link: "",
+      botao: "",
+      preco: "R$ 199,90",
+      desconto: "20%",
+      validade: "",
+      observacoes: "",
+    });
+
+    expect(result.preco).toBe("R$ 199,90");
+    expect(result.desconto).toBe("20%");
+  });
+
+  it("rejeita preço/desconto muito longos", () => {
     expect(() =>
       service.validateFieldContent({
         titulo: "Título",
@@ -426,12 +447,12 @@ describe("CampaignService", () => {
         imagens: [],
         link: "",
         botao: "",
-        preco: "inválido",
+        preco: "x".repeat(51),
         desconto: "",
         validade: "",
         observacoes: "",
       }),
-    ).toThrow("numérico");
+    ).toThrow();
   });
 
   it("agendamento com data futura define status scheduled", async () => {
@@ -610,5 +631,44 @@ describe("resolveRecipientContactIds", () => {
       expect.arrayContaining(["contact-a", "contact-b", "contact-c"]),
     );
     expect(ids).toHaveLength(3);
+  });
+});
+
+describe("templateContentToCampaignField", () => {
+  const baseContent = {
+    titulo: "Ofertas de Inverno",
+    subtitulo: "Descontos exclusivos",
+    corpo: "Aproveite.",
+    ctaTexto: "Ver ofertas",
+    ctaUrl: "https://exemplo.com.br/promo",
+    bannerUrl: "",
+    precoOriginal: "R$ 199,90",
+    precoPromocional: "R$ 149,90",
+    validade: "31/08/2026",
+    nomeProduto: "",
+    preco: "",
+    destaque: "",
+  };
+
+  it("mapeia preço/desconto em texto livre sem validar como número", () => {
+    const field = templateContentToCampaignField(baseContent);
+
+    expect(field.preco).toBe("R$ 199,90");
+    expect(field.desconto).toBe("R$ 149,90");
+  });
+
+  it("converte validade em formato BR (dd/MM/yyyy) do template para ISO", () => {
+    const field = templateContentToCampaignField(baseContent);
+
+    expect(field.validade).toBe("2026-08-31");
+  });
+
+  it("degrada para vazio quando a validade do template não é uma data reconhecível", () => {
+    const field = templateContentToCampaignField({
+      ...baseContent,
+      validade: "Enquanto durarem os estoques",
+    });
+
+    expect(field.validade).toBe("");
   });
 });

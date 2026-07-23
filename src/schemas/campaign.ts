@@ -21,21 +21,6 @@ function optionalShortText(max: number, label: string) {
     .or(z.literal(""));
 }
 
-/// Valor monetário ou percentual (formato livre, mas deve ser numérico válido).
-const optionalNumericField = z
-  .string()
-  .trim()
-  .optional()
-  .or(z.literal(""))
-  .refine(
-    (value) => {
-      if (!value) return true;
-      const normalized = value.replace(/\./g, "").replace(",", ".");
-      return !Number.isNaN(Number(normalized)) && Number(normalized) >= 0;
-    },
-    { message: "Informe um valor numérico válido" },
-  );
-
 export const WIZARD_STEPS = [
   "criar",
   "tipo",
@@ -75,8 +60,10 @@ export const campaignFieldSchema = z.object({
     .default([]),
   link: optionalUrl,
   botao: optionalShortText(80, "Texto do botão"),
-  preco: optionalNumericField,
-  desconto: optionalNumericField,
+  // Texto livre (ex.: "R$ 199,90", "20%") — exibido como está, nunca usado
+  // em cálculo. Mesmo formato de `templateContentSchema.preco/precoOriginal`.
+  preco: optionalShortText(50, "Preço"),
+  desconto: optionalShortText(50, "Desconto"),
   validade: z
     .string()
     .trim()

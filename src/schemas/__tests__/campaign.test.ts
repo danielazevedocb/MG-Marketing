@@ -117,18 +117,26 @@ describe("campaignFieldSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejeita preço inválido", () => {
+  it("aceita preço em texto livre — nunca é usado como número", () => {
     const result = campaignFieldSchema.safeParse({
       ...validField,
-      preco: "abc",
+      preco: "R$ 199,90",
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
-  it("rejeita desconto inválido", () => {
+  it("aceita desconto em texto livre — nunca é usado como número", () => {
     const result = campaignFieldSchema.safeParse({
       ...validField,
-      desconto: "xyz",
+      desconto: "20% off",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita preço acima do tamanho máximo", () => {
+    const result = campaignFieldSchema.safeParse({
+      ...validField,
+      preco: "x".repeat(51),
     });
     expect(result.success).toBe(false);
   });
