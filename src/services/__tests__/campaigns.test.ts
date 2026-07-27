@@ -306,6 +306,118 @@ describe("CampaignService", () => {
     expect(findTemplateByIdMock).toHaveBeenCalledWith(seedTemplateId);
   });
 
+  it("avanço na etapa template preserva banner/imagem/imagens/videoUrl quando o template não fornece esses campos", async () => {
+    const campaignComMidia = {
+      ...sampleCampaign,
+      field: {
+        ...sampleField,
+        banner: "https://cdn.example.com/banner-atual.png",
+        imagem: "https://cdn.example.com/imagem-atual.png",
+        imagens: ["https://cdn.example.com/g1.jpg"],
+        videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      },
+    };
+    findCampaignByIdMock.mockResolvedValue(campaignComMidia);
+    findTemplateByIdMock.mockResolvedValue({
+      id: "template-1",
+      conteudo: JSON.stringify({
+        titulo: "Promoção",
+        subtitulo: "",
+        corpo: "Corpo da promoção",
+        ctaTexto: "",
+        ctaUrl: "",
+        bannerUrl: "", // template sem banner — não deve apagar o banner já salvo
+        precoOriginal: "",
+        precoPromocional: "",
+        validade: "",
+        nomeProduto: "",
+        preco: "",
+        destaque: "",
+      }),
+    });
+    updateCampaignMock.mockResolvedValue({
+      ...campaignComMidia,
+      templateId: "template-1",
+      wizardStep: "conteudo",
+    });
+
+    await service.advanceWizardStep(
+      "campaign-1",
+      "template",
+      { templateId: "template-1" },
+      "user-1",
+    );
+
+    expect(updateCampaignMock).toHaveBeenCalledWith(
+      "campaign-1",
+      expect.objectContaining({
+        field: expect.objectContaining({
+          titulo: "Promoção",
+          banner: "https://cdn.example.com/banner-atual.png",
+          imagem: "https://cdn.example.com/imagem-atual.png",
+          imagens: ["https://cdn.example.com/g1.jpg"],
+          videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        }),
+      }),
+    );
+  });
+
+  it("avanço na etapa template sobrescreve banner quando o template fornece um valor", async () => {
+    const campaignComMidia = {
+      ...sampleCampaign,
+      field: {
+        ...sampleField,
+        banner: "https://cdn.example.com/banner-antigo.png",
+        imagem: "https://cdn.example.com/imagem-atual.png",
+        imagens: ["https://cdn.example.com/g1.jpg"],
+        videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      },
+    };
+    findCampaignByIdMock.mockResolvedValue(campaignComMidia);
+    findTemplateByIdMock.mockResolvedValue({
+      id: "template-2",
+      conteudo: JSON.stringify({
+        titulo: "Promoção",
+        subtitulo: "",
+        corpo: "Corpo da promoção",
+        ctaTexto: "",
+        ctaUrl: "",
+        bannerUrl: "https://cdn.example.com/banner-do-template.png",
+        precoOriginal: "",
+        precoPromocional: "",
+        validade: "",
+        nomeProduto: "",
+        preco: "",
+        destaque: "",
+      }),
+    });
+    updateCampaignMock.mockResolvedValue({
+      ...campaignComMidia,
+      templateId: "template-2",
+      wizardStep: "conteudo",
+    });
+
+    await service.advanceWizardStep(
+      "campaign-1",
+      "template",
+      { templateId: "template-2" },
+      "user-1",
+    );
+
+    expect(updateCampaignMock).toHaveBeenCalledWith(
+      "campaign-1",
+      expect.objectContaining({
+        field: expect.objectContaining({
+          banner: "https://cdn.example.com/banner-do-template.png",
+          // imagem/imagens/videoUrl continuam preservados — o template não tem esses campos.
+          imagem: "https://cdn.example.com/imagem-atual.png",
+          imagens: ["https://cdn.example.com/g1.jpg"],
+          videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        }),
+      }),
+    );
+  });
+
   it("avanço de preview para enviar preserva templateId legado de seed", async () => {
     const seedTemplateId = "seed-template-promocao-sazonal";
     findCampaignByIdMock.mockResolvedValue({

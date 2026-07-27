@@ -11,6 +11,7 @@ const baseField: CampaignFieldDto = {
   banner: "https://cdn.example.com/banner.png",
   imagem: null,
   imagens: [],
+  videoUrl: null,
   link: null,
   botao: null,
   preco: "R$ 99,90",
@@ -130,6 +131,28 @@ describe("buildLandingViewModel", () => {
     expect(model.ogImageUrl).toBeNull();
   });
 
+  it("videoUrl válido do YouTube vira videoEmbedUrl", () => {
+    const model = buildLandingViewModel(CampaignType.Geral, {
+      ...baseField,
+      videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    });
+
+    expect(model.videoEmbedUrl).toBe(
+      "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+    );
+  });
+
+  it("videoUrl ausente ou inválido vira videoEmbedUrl null", () => {
+    const semVideo = buildLandingViewModel(CampaignType.Geral, baseField);
+    expect(semVideo.videoEmbedUrl).toBeNull();
+
+    const videoInvalido = buildLandingViewModel(CampaignType.Geral, {
+      ...baseField,
+      videoUrl: "https://vimeo.com/123456",
+    });
+    expect(videoInvalido.videoEmbedUrl).toBeNull();
+  });
+
   it("lida com conteúdo mínimo sem quebrar", () => {
     const model = buildLandingViewModel(CampaignType.Geral, {
       titulo: null,
@@ -138,6 +161,7 @@ describe("buildLandingViewModel", () => {
       banner: null,
       imagem: null,
       imagens: [],
+      videoUrl: null,
       link: null,
       botao: null,
       preco: null,

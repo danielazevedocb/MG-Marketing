@@ -171,6 +171,39 @@ describe("campaignFieldSchema", () => {
   it("emptyFieldInput inclui galeria vazia", () => {
     expect(emptyFieldInput().imagens).toEqual([]);
   });
+
+  it("emptyFieldInput inclui videoUrl vazio", () => {
+    expect(emptyFieldInput().videoUrl).toBe("");
+  });
+
+  it("videoUrl vazio passa na validação", () => {
+    const result = campaignFieldSchema.safeParse(validField);
+    expect(result.success).toBe(true);
+  });
+
+  it("aceita link válido do YouTube em videoUrl", () => {
+    const result = campaignFieldSchema.safeParse({
+      ...validField,
+      videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita videoUrl que não é do YouTube", () => {
+    const result = campaignFieldSchema.safeParse({
+      ...validField,
+      videoUrl: "https://vimeo.com/123456",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita videoUrl com esquema perigoso", () => {
+    const result = campaignFieldSchema.safeParse({
+      ...validField,
+      videoUrl: "javascript:alert(1)",
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("campaignImageStepSchema", () => {
@@ -194,6 +227,30 @@ describe("campaignImageStepSchema", () => {
           { length: 9 },
           (_, i) => `https://cdn.example.com/g${i}.jpg`,
         ),
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("aceita videoUrl válido do YouTube na etapa imagem", () => {
+    const result = campaignImageStepSchema.safeParse({
+      field: {
+        banner: "",
+        imagem: "",
+        imagens: [],
+        videoUrl: "https://youtu.be/dQw4w9WgXcQ",
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita videoUrl inválido na etapa imagem", () => {
+    const result = campaignImageStepSchema.safeParse({
+      field: {
+        banner: "",
+        imagem: "",
+        imagens: [],
+        videoUrl: "https://vimeo.com/123456",
       },
     });
     expect(result.success).toBe(false);

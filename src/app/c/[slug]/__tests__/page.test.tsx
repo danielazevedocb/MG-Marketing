@@ -24,6 +24,7 @@ const sampleField: CampaignFieldDto = {
   banner: "https://cdn.example.com/banner.jpg",
   imagem: null,
   imagens: [],
+  videoUrl: null,
   link: null,
   botao: null,
   preco: "199,90",

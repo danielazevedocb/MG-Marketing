@@ -12,7 +12,18 @@ type CampaignLandingProps = {
 export function CampaignLanding({ model }: CampaignLandingProps) {
   return (
     <article className="mx-auto w-full max-w-5xl space-y-10 px-6 py-12 sm:py-16">
-      {model.heroUrl ? (
+      {model.videoEmbedUrl ? (
+        <div className="bg-muted aspect-video w-full overflow-hidden rounded-xl border">
+          <iframe
+            src={model.videoEmbedUrl}
+            title={model.titulo}
+            className="h-full w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
+        </div>
+      ) : model.heroUrl ? (
         <LandingImage
           src={model.heroUrl}
           alt={model.titulo}

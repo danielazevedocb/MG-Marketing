@@ -20,6 +20,7 @@ const sampleContent = {
   observacoes: "Sujeito a disponibilidade.",
   banner: "https://cdn.example.com/banner.jpg",
   imagem: "https://cdn.example.com/logo.png",
+  videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 };
 
 describe("gerarMensagemWhatsApp", () => {
@@ -70,6 +71,12 @@ describe("gerarMensagemWhatsApp", () => {
     expect(withoutSignature).toBe("*Título*");
     expect(withEmptySignature).toBe("*Título*");
   });
+
+  it("não inclui videoUrl em nenhum lugar da mensagem — vídeo é exclusivo da landing", () => {
+    const message = gerarMensagemWhatsApp(sampleContent);
+    expect(message).not.toContain("youtube");
+    expect(message).not.toContain(sampleContent.videoUrl);
+  });
 });
 
 describe("gerarHtmlEmail", () => {
@@ -103,5 +110,11 @@ describe("gerarHtmlEmail", () => {
     expect(html).toContain(escapeHtml('<script>alert("xss")</script>'));
     expect(html).toContain(escapeHtml("<img src=x onerror=alert(1)>"));
     expect(html).not.toContain("<b>Clique</b>");
+  });
+
+  it("não inclui videoUrl em nenhum lugar do HTML — vídeo é exclusivo da landing", () => {
+    const html = gerarHtmlEmail(sampleContent);
+    expect(html).not.toContain("youtube");
+    expect(html).not.toContain(sampleContent.videoUrl);
   });
 });

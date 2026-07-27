@@ -351,6 +351,30 @@ export function CampaignImageEditor({
       />
 
       <GalleryField disabled={disabled} />
+
+      <FormField
+        control={form.control}
+        name="field.videoUrl"
+        render={({ field }) => (
+          <FormItem className="min-w-0 lg:col-span-2">
+            <FormLabel>Vídeo do YouTube (opcional)</FormLabel>
+            <FormControl>
+              <Input
+                disabled={disabled}
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={field.value ?? ""}
+                onChange={field.onChange}
+              />
+            </FormControl>
+            <FormDescription>
+              Cole o link de um vídeo público do YouTube. Quando informado, o
+              vídeo substitui o banner no topo da página pública da campanha (o
+              banner continua sendo usado no email).
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </div>
   );
 }

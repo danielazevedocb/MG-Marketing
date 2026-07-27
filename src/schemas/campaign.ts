@@ -8,7 +8,11 @@ import {
 } from "@/generated/prisma/enums";
 import { normalizeOptionalString } from "@/schemas/contact";
 import { entityIdArraySchema, entityIdSchema } from "@/schemas/id";
-import { httpUrlSchema, optionalHttpUrlSchema } from "@/schemas/url";
+import {
+  extractYouTubeVideoId,
+  httpUrlSchema,
+  optionalHttpUrlSchema,
+} from "@/schemas/url";
 
 const optionalUrl = optionalHttpUrlSchema();
 
@@ -58,6 +62,10 @@ export const campaignFieldSchema = z.object({
     .array(httpUrlSchema("URL de imagem inválida"))
     .max(8, "Máximo de 8 imagens na galeria")
     .default([]),
+  videoUrl: optionalHttpUrlSchema("URL do vídeo inválida").refine(
+    (value) => !value || extractYouTubeVideoId(value) !== null,
+    { message: "Informe um link válido do YouTube (youtube.com ou youtu.be)" },
+  ),
   link: optionalUrl,
   botao: optionalShortText(80, "Texto do botão"),
   // Texto livre (ex.: "R$ 199,90", "20%") — exibido como está, nunca usado
@@ -140,6 +148,7 @@ export const campaignImageStepSchema = z.object({
     banner: true,
     imagem: true,
     imagens: true,
+    videoUrl: true,
   }),
 });
 
@@ -319,6 +328,7 @@ export function emptyFieldInput(): CampaignFieldInput {
     banner: "",
     imagem: "",
     imagens: [],
+    videoUrl: "",
     link: "",
     botao: "",
     preco: "",

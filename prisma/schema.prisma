@@ -291,6 +291,10 @@ model CampaignField {
   imagem      String?
   /// URLs da galeria de imagens exibida na landing page pública.
   imagens     String[]  @default([])
+  /// Link de vídeo do YouTube que substitui o banner no topo da landing
+  /// pública quando presente. Exclusivo da landing — não aparece em
+  /// Email/WhatsApp. Validado/normalizado em schemas/campaign.ts.
+  videoUrl    String?
   link        String?
   botao       String?
   preco       String?

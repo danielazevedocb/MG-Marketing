@@ -107,6 +107,7 @@ function buildDefaultValues(campaign?: CampaignDto): CampaignWizardStateInput {
       banner: campaign.field?.banner ?? "",
       imagem: campaign.field?.imagem ?? "",
       imagens: campaign.field?.imagens ?? [],
+      videoUrl: campaign.field?.videoUrl ?? "",
       link: campaign.field?.link ?? "",
       botao: campaign.field?.botao ?? "",
       preco: campaign.field?.preco ?? "",
@@ -288,6 +289,7 @@ export function CampaignWizard({
             banner: values.field.banner,
             imagem: values.field.imagem,
             imagens: values.field.imagens ?? [],
+            videoUrl: values.field.videoUrl,
           },
         };
       case "contatos":
@@ -362,6 +364,7 @@ export function CampaignWizard({
           banner: field.banner ?? "",
           imagem: field.imagem ?? "",
           imagens: field.imagens ?? [],
+          videoUrl: field.videoUrl ?? "",
           link: field.link ?? "",
           botao: field.botao ?? "",
           preco: field.preco ?? "",

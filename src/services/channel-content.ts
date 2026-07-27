@@ -1,5 +1,6 @@
 // Geração de conteúdo por canal — compartilhado entre preview e sending.
 import type { CampaignFieldDraftInput } from "@/schemas/campaign";
+import { extractYouTubeVideoId } from "@/schemas/url";
 
 export type CampaignChannelContent = CampaignFieldDraftInput;
 
@@ -23,6 +24,19 @@ export function sanitizeUrl(url: string | undefined | null): string | null {
     return null;
   }
   return null;
+}
+
+/// Reconstrói a URL de embed privacy-enhanced do YouTube
+/// (youtube-nocookie.com) a partir do ID extraído e validado — nunca repassa
+/// a URL do usuário diretamente ao iframe (evita abrir brecha de embed
+/// arbitrário via `src`). Vídeo é exclusivo da landing pública: NÃO é usado
+/// em `gerarMensagemWhatsApp`/`gerarHtmlEmail`.
+export function sanitizeYouTubeUrl(
+  url: string | null | undefined,
+): string | null {
+  if (!url?.trim()) return null;
+  const id = extractYouTubeVideoId(url.trim());
+  return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
 }
 
 function formatValidadeLabel(validade: string): string {

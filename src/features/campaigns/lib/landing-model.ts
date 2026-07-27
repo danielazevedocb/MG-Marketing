@@ -2,7 +2,7 @@
 import type { CampaignType } from "@/generated/prisma/enums";
 import { CAMPAIGN_TYPE_LABELS } from "@/schemas/campaign";
 import type { CampaignFieldDto } from "@/services/campaigns";
-import { sanitizeUrl } from "@/services/channel-content";
+import { sanitizeUrl, sanitizeYouTubeUrl } from "@/services/channel-content";
 
 export type LandingDetail = {
   label: string;
@@ -14,8 +14,12 @@ export type LandingViewModel = {
   titulo: string;
   subtitulo: string | null;
   paragrafos: string[];
-  /// Banner em largura total no topo da página.
+  /// Banner em largura total no topo da página (substituído por
+  /// `videoEmbedUrl` quando presente — ver campaign-landing.tsx).
   heroUrl: string | null;
+  /// Embed seguro (youtube-nocookie.com/embed/{id}) do vídeo do YouTube,
+  /// exclusivo da landing pública — nunca aparece em Email/WhatsApp.
+  videoEmbedUrl: string | null;
   /// Imagem exibida na coluna ao lado do texto (null se igual ao hero).
   lateralUrl: string | null;
   /// Galeria em grade abaixo do conteúdo (sanitizada, sem duplicar hero/lateral).
@@ -57,6 +61,7 @@ export function buildLandingViewModel(
   }
 
   const heroUrl = sanitizeUrl(field.banner);
+  const videoEmbedUrl = sanitizeYouTubeUrl(field.videoUrl);
   const imagemSanitizada = sanitizeUrl(field.imagem);
   const lateralUrl = imagemSanitizada === heroUrl ? null : imagemSanitizada;
 
@@ -73,6 +78,7 @@ export function buildLandingViewModel(
     subtitulo: field.subtitulo?.trim() || null,
     paragrafos,
     heroUrl,
+    videoEmbedUrl,
     lateralUrl,
     galeria,
     ogImageUrl: heroUrl ?? lateralUrl ?? galeria[0] ?? null,

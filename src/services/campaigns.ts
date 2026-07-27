@@ -57,6 +57,7 @@ export type CampaignFieldDto = {
   banner: string | null;
   imagem: string | null;
   imagens: string[];
+  videoUrl: string | null;
   link: string | null;
   botao: string | null;
   preco: string | null;
@@ -134,6 +135,7 @@ function fieldToDto(
     banner: field.banner,
     imagem: field.imagem,
     imagens: field.imagens ?? [],
+    videoUrl: field.videoUrl,
     link: field.link,
     botao: field.botao,
     preco: field.preco,
@@ -151,6 +153,7 @@ function fieldInputToData(input: CampaignFieldDraftInput): CampaignFieldData {
     banner: input.banner || null,
     imagem: input.imagem || null,
     imagens: input.imagens ?? [],
+    videoUrl: input.videoUrl || null,
     link: input.link || null,
     botao: input.botao || null,
     preco: input.preco || null,
@@ -174,6 +177,7 @@ function fieldToInput(field: CampaignFieldDto | null): CampaignFieldInput {
     banner: field.banner ?? "",
     imagem: field.imagem ?? "",
     imagens: field.imagens ?? [],
+    videoUrl: field.videoUrl ?? "",
     link: field.link ?? "",
     botao: field.botao ?? "",
     preco: field.preco ?? "",
@@ -210,6 +214,7 @@ export function templateContentToCampaignField(
     banner: content.bannerUrl ?? "",
     imagem: "",
     imagens: [],
+    videoUrl: "",
     link: content.ctaUrl ?? "",
     botao: content.ctaTexto ?? "",
     preco: content.preco || content.precoOriginal || "",
@@ -405,7 +410,25 @@ export class CampaignService {
       } catch {
         throw new CampaignValidationError("Conteúdo do template inválido");
       }
-      mergedState.field = templateContentToCampaignField(content);
+      const templateField = templateContentToCampaignField(content);
+      const existingField = currentState.field;
+      // Campos de mídia (etapa "Imagem") só são sobrescritos quando o
+      // template realmente fornece um valor não-vazio — caso contrário
+      // preserva o que o usuário já salvou. Sem isso, reconfirmar a etapa
+      // Template depois de já ter subido banner/imagem/imagens/vídeo na
+      // etapa Imagem apagava esse conteúdo (o template mapeia
+      // imagem/imagens/videoUrl sempre vazios, e banner só quando o
+      // template tem `bannerUrl`).
+      mergedState.field = {
+        ...templateField,
+        banner: templateField.banner || existingField.banner,
+        imagem: templateField.imagem || existingField.imagem,
+        imagens:
+          templateField.imagens.length > 0
+            ? templateField.imagens
+            : existingField.imagens,
+        videoUrl: templateField.videoUrl || existingField.videoUrl,
+      };
     }
 
     const parsed = this.parseWizardState({
@@ -605,6 +628,7 @@ export class CampaignService {
             banner: field.banner,
             imagem: field.imagem,
             imagens: [...(field.imagens ?? [])],
+            videoUrl: field.videoUrl,
             link: field.link,
             botao: field.botao,
             preco: field.preco,
