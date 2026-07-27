@@ -170,9 +170,11 @@ export function gerarHtmlEmail(
     ? `<tr><td><img src="${escapeHtml(bannerUrl)}" alt="" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0;" /></td></tr>`
     : "";
 
-  const logoBlock = logoUrl
-    ? `<img src="${escapeHtml(logoUrl)}" alt="Logo" width="120" style="display:block;max-width:120px;height:auto;margin:0 auto 20px;border:0;" />`
-    : "";
+  // Logo ao lado do título (não empilhado acima) quando presente; sem logo,
+  // título centrado sozinho como antes.
+  const headerBlock = logoUrl
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 12px;"><tr><td width="64" style="padding:0 16px 0 0;vertical-align:middle;"><img src="${escapeHtml(logoUrl)}" alt="Logo" width="64" style="display:block;width:64px;height:auto;border:0;border-radius:8px;" /></td><td style="vertical-align:middle;"><h1 style="margin:0;font-size:24px;line-height:1.3;font-weight:700;color:#0f172a;">${titulo}</h1></td></tr></table>`
+    : `<h1 style="margin:0 0 12px;font-size:26px;line-height:1.25;font-weight:700;color:#0f172a;text-align:center;">${titulo}</h1>`;
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -189,8 +191,7 @@ export function gerarHtmlEmail(
           ${bannerBlock}
           <tr>
             <td style="padding:32px 28px 28px;">
-              ${logoBlock}
-              <h1 style="margin:0 0 12px;font-size:26px;line-height:1.25;font-weight:700;color:#0f172a;text-align:center;">${titulo}</h1>
+              ${headerBlock}
               ${subtitulo}
               ${bodyParagraphs}
               ${detailsTable}
