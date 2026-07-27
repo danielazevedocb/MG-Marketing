@@ -223,7 +223,7 @@ export function CampaignWizard({
   const contactsQuery = useQuery({
     queryKey: ["contacts", "wizard"],
     queryFn: async () => {
-      const result = await listContactsAction({ page: 1, pageSize: 200 });
+      const result = await listContactsAction({ page: 1, pageSize: 100 });
       if (!result.success) throw new Error(result.error);
       return result.data.items;
     },
@@ -639,6 +639,24 @@ export function CampaignWizard({
                     <fieldset className="space-y-2">
                       <legend className="text-sm font-medium">Contatos</legend>
                       <div className="border-border max-h-64 space-y-2 overflow-y-auto rounded-md border p-3">
+                        {contactsQuery.isLoading ? (
+                          <p className="text-muted-foreground text-sm">
+                            Carregando contatos...
+                          </p>
+                        ) : contactsQuery.isError ? (
+                          <p className="text-destructive text-sm">
+                            Não foi possível carregar os contatos. Recarregue a
+                            página e tente novamente.
+                          </p>
+                        ) : (contactsQuery.data ?? []).length === 0 ? (
+                          <p className="text-muted-foreground text-sm">
+                            Nenhum contato cadastrado ainda.{" "}
+                            <Link href="/contacts" className="underline">
+                              Cadastre um contato
+                            </Link>{" "}
+                            antes de continuar.
+                          </p>
+                        ) : null}
                         {(contactsQuery.data ?? []).map((contact) => {
                           const checked = field.value.includes(contact.id);
                           return (
@@ -685,6 +703,24 @@ export function CampaignWizard({
                     <fieldset className="space-y-2">
                       <legend className="text-sm font-medium">Grupos</legend>
                       <div className="border-border max-h-64 space-y-2 overflow-y-auto rounded-md border p-3">
+                        {groupsQuery.isLoading ? (
+                          <p className="text-muted-foreground text-sm">
+                            Carregando grupos...
+                          </p>
+                        ) : groupsQuery.isError ? (
+                          <p className="text-destructive text-sm">
+                            Não foi possível carregar os grupos. Recarregue a
+                            página e tente novamente.
+                          </p>
+                        ) : (groupsQuery.data ?? []).length === 0 ? (
+                          <p className="text-muted-foreground text-sm">
+                            Nenhum grupo cadastrado ainda.{" "}
+                            <Link href="/contacts" className="underline">
+                              Crie um grupo
+                            </Link>{" "}
+                            ou avance sem selecionar nenhum.
+                          </p>
+                        ) : null}
                         {(groupsQuery.data ?? []).map((group) => {
                           const checked = field.value.includes(group.id);
                           return (
