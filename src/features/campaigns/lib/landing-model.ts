@@ -17,11 +17,17 @@ export type LandingViewModel = {
   /// Embed seguro (youtube-nocookie.com/embed/{id}) do vídeo do YouTube,
   /// exclusivo da landing pública — nunca aparece em Email/WhatsApp.
   videoEmbedUrl: string | null;
-  /// Fotos da campanha (banner + imagem + galeria unificados), sanitizadas,
-  /// sem duplicatas, exibidas em grade abaixo do texto/vídeo — layout
-  /// "blog": explicação primeiro, mídia depois.
+  /// Banner exibido em destaque logo após o texto — só quando não há
+  /// vídeo (vídeo e banner ocupam o mesmo lugar, vídeo tem prioridade).
+  /// Não entra na grade de fotos.
+  bannerUrl: string | null;
+  /// Logo (campo `imagem`) exibida sozinha numa barra de cabeçalho no topo
+  /// da página — não entra na grade de fotos (evita duplicar).
+  logoUrl: string | null;
+  /// Galeria de fotos extras (campo `imagens`), sanitizada, sem duplicatas
+  /// e sem repetir banner/logo, exibida em grade após vídeo/banner.
   fotos: string[];
-  /// Imagem usada no card de preview (og:image): 1ª foto disponível.
+  /// Imagem usada no card de preview (og:image): banner → 1ª foto → logo.
   ogImageUrl: string | null;
   detalhes: LandingDetail[];
   observacoes: string | null;
@@ -56,10 +62,13 @@ export function buildLandingViewModel(
   }
 
   const videoEmbedUrl = sanitizeYouTubeUrl(field.videoUrl);
+  const bannerUrl = sanitizeUrl(field.banner);
+  const logoUrl = sanitizeUrl(field.imagem);
 
-  const fotos = [field.banner, field.imagem, ...(field.imagens ?? [])]
+  const fotos = (field.imagens ?? [])
     .map((url) => sanitizeUrl(url))
     .filter((url): url is string => Boolean(url))
+    .filter((url) => url !== bannerUrl && url !== logoUrl)
     .filter((url, index, list) => list.indexOf(url) === index);
 
   return {
@@ -68,8 +77,10 @@ export function buildLandingViewModel(
     subtitulo: field.subtitulo?.trim() || null,
     paragrafos,
     videoEmbedUrl,
+    bannerUrl,
+    logoUrl,
     fotos,
-    ogImageUrl: fotos[0] ?? null,
+    ogImageUrl: bannerUrl ?? fotos[0] ?? logoUrl ?? null,
     detalhes,
     observacoes: field.observacoes?.trim() || null,
   };
