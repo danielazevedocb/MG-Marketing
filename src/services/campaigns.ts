@@ -380,7 +380,18 @@ export class CampaignService {
     }
 
     const currentState = await this.buildWizardState(existing);
-    const mergedState = { ...currentState, ...stepData };
+    // Merge raso quebraria etapas que enviam `field` parcial (ex.: "imagem"
+    // só manda banner/imagem/imagens) — apagaria titulo/subtitulo/texto/etc.
+    // já preenchidos por outra etapa (conteúdo, template).
+    const stepField = (stepData as { field?: Partial<CampaignFieldInput> })
+      .field;
+    const mergedState: CampaignWizardStateInput = {
+      ...currentState,
+      ...stepData,
+      field: stepField
+        ? { ...currentState.field, ...stepField }
+        : currentState.field,
+    };
     const nextStep = getNextWizardStep(currentStep);
 
     if (currentStep === "template" && mergedState.templateId) {

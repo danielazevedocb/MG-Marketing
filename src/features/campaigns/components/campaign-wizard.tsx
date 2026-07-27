@@ -138,6 +138,49 @@ function applyZodErrorsToForm(
   }
 }
 
+function WhatsAppSendLinksPanel({
+  links,
+  onFinish,
+}: {
+  links: { recipient: string; url: string }[];
+  onFinish: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-semibold">Campanha enviada</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Uma aba do WhatsApp já foi aberta para o primeiro destinatário. Abra o
+          WhatsApp de cada contato abaixo e aperte enviar — o WhatsApp não
+          permite completar o envio automaticamente.
+        </p>
+      </div>
+
+      <ul className="divide-y rounded-md border">
+        {links.map((item, index) => (
+          <li
+            key={`${item.recipient}-${index}`}
+            className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+          >
+            <span>{item.recipient}</span>
+            <Button asChild variant="outline" size="sm">
+              <a href={item.url} target="_blank" rel="noopener noreferrer">
+                Abrir WhatsApp
+              </a>
+            </Button>
+          </li>
+        ))}
+      </ul>
+
+      <div className="border-t pt-4">
+        <Button type="button" onClick={onFinish}>
+          Concluir
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function CampaignWizard({
   mode,
   initialCampaign,
@@ -155,6 +198,9 @@ export function CampaignWizard({
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
     "idle",
   );
+  const [whatsappLinks, setWhatsappLinks] = useState<
+    { recipient: string; url: string }[] | null
+  >(null);
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const form = useForm<CampaignWizardStateInput>({
@@ -371,6 +417,12 @@ export function CampaignWizard({
     });
   }
 
+  function finishSendFlow() {
+    setWhatsappLinks(null);
+    router.push("/campaigns");
+    router.refresh();
+  }
+
   function handleSendNow() {
     if (!campaignId) return;
 
@@ -380,6 +432,21 @@ export function CampaignWizard({
         setServerError(result.error);
         return;
       }
+
+      const links = result.data.items
+        .filter((item) => item.channel === Channel.WhatsApp && item.waMeUrl)
+        .map((item) => ({ recipient: item.recipient, url: item.waMeUrl! }));
+
+      if (links.length > 0) {
+        // WhatsApp não permite envio automático — abrimos a primeira janela
+        // aqui (ainda dentro do gesto de clique) e deixamos as demais para o
+        // usuário abrir manualmente, já que navegadores bloqueiam abertura em
+        // massa de abas sem interação direta.
+        window.open(links[0].url, "_blank", "noopener,noreferrer");
+        setWhatsappLinks(links);
+        return;
+      }
+
       router.push("/campaigns");
       router.refresh();
     });
@@ -406,6 +473,12 @@ export function CampaignWizard({
 
   const stepMeta = WIZARD_STEP_META[currentStep];
   const stepIndex = WIZARD_STEPS.indexOf(currentStep);
+
+  if (whatsappLinks) {
+    return (
+      <WhatsAppSendLinksPanel links={whatsappLinks} onFinish={finishSendFlow} />
+    );
+  }
 
   return (
     <Form {...form}>
@@ -659,22 +732,16 @@ export function CampaignWizard({
                         {Object.entries(CHANNEL_LABELS).map(
                           ([value, label]) => {
                             const channel = value as Channel;
-                            const isWhatsApp = channel === Channel.WhatsApp;
                             const checked = field.value.includes(channel);
                             return (
                               <label
                                 key={value}
-                                className={`border-input flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${isWhatsApp ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-                                title={
-                                  isWhatsApp
-                                    ? "Integração em desenvolvimento"
-                                    : undefined
-                                }
+                                className="border-input flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm"
                               >
                                 <input
                                   type="checkbox"
                                   checked={checked}
-                                  disabled={isPending || isWhatsApp}
+                                  disabled={isPending}
                                   onChange={(event) => {
                                     const next = event.target.checked
                                       ? [...field.value, channel]
@@ -685,11 +752,6 @@ export function CampaignWizard({
                                   }}
                                 />
                                 {label}
-                                {isWhatsApp ? (
-                                  <span className="text-muted-foreground text-xs">
-                                    (em breve)
-                                  </span>
-                                ) : null}
                               </label>
                             );
                           },

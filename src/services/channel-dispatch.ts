@@ -35,6 +35,9 @@ export type DispatchResultItem = {
   contactId: string;
   status: SendStatus;
   returnMessage: string | null;
+  // Só presente para WhatsApp: link wa.me pronto para o cliente abrir e
+  // completar o envio manual (WhatsApp não permite disparo automático).
+  waMeUrl?: string;
 };
 
 export type DispatchCampaignResult = {
@@ -219,6 +222,7 @@ export class ChannelDispatchService {
           contactId: recipient.id,
           status,
           returnMessage,
+          waMeUrl: result.success ? result.waMeUrl : undefined,
         });
       }
     }
