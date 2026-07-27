@@ -12,7 +12,7 @@ import {
 import { prisma } from "@/lib/prisma";
 
 export type CampaignWithRelations = Prisma.CampaignGetPayload<{
-  include: { field: true; template: true };
+  include: { field: true };
 }>;
 
 /** Campos mínimos consumidos pela landing pública (`/c/[slug]`) — sem template. */
@@ -68,7 +68,10 @@ export type CampaignListResult = {
   total: number;
 };
 
-const campaignInclude = { field: true, template: true } as const;
+// Só templateId é lido no app (nunca o objeto Template relacionado) — não
+// incluir a relação evita trazer/descartar `Template.conteudo` (JSON grande)
+// em toda leitura/listagem de campanha.
+const campaignInclude = { field: true } as const;
 
 function buildWhere(query: CampaignListQuery): Prisma.CampaignWhereInput {
   const where: Prisma.CampaignWhereInput = {};

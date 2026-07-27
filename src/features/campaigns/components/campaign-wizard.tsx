@@ -5,7 +5,12 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { useForm, type UseFormReturn } from "react-hook-form";
+import {
+  useForm,
+  useWatch,
+  type Control,
+  type UseFormReturn,
+} from "react-hook-form";
 import type { ZodError, ZodType } from "zod";
 
 import {
@@ -182,6 +187,40 @@ function WhatsAppSendLinksPanel({
   );
 }
 
+type AutosaveControllerProps = {
+  control: Control<CampaignWizardStateInput>;
+  persistDraft: (values: CampaignWizardStateInput) => Promise<boolean>;
+  onSaving: () => void;
+  onSuccess: () => void;
+  onError: () => void;
+};
+
+// Isola a assinatura do form inteiro (useWatch) num componente próprio: só
+// ele re-renderiza a cada tecla digitada, em vez do wizard inteiro (que tem
+// centenas de linhas de JSX condicional por etapa). `useWatch` sem `name`
+// assina todos os campos via pub-sub interno do react-hook-form, sem forçar
+// re-render do componente pai.
+function AutosaveController({
+  control,
+  persistDraft,
+  onSaving,
+  onSuccess,
+  onError,
+}: AutosaveControllerProps) {
+  const watchedValues = useWatch({ control });
+
+  useAutosave(watchedValues as CampaignWizardStateInput, {
+    enabled: true,
+    delay: 1500,
+    onSave: persistDraft,
+    onSaving,
+    onSuccess,
+    onError,
+  });
+
+  return null;
+}
+
 export function CampaignWizard({
   mode,
   initialCampaign,
@@ -249,23 +288,6 @@ export function CampaignWizard({
     },
     [campaignId, currentStep],
   );
-
-  const watchedValues = form.watch();
-
-  useAutosave(watchedValues, {
-    enabled: Boolean(campaignId),
-    delay: 1500,
-    onSave: persistDraft,
-    onSaving: () => setSaveStatus("saving"),
-    onSuccess: () => {
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 3000);
-    },
-    onError: () => {
-      setSaveStatus("idle");
-      toast.error("Não foi possível salvar o rascunho.");
-    },
-  });
 
   // Move o foco para o título da etapa a cada navegação (avançar/voltar), para
   // que usuários de teclado e leitor de tela não fiquem presos no botão anterior.
@@ -485,6 +507,21 @@ export function CampaignWizard({
 
   return (
     <Form {...form}>
+      {campaignId ? (
+        <AutosaveController
+          control={form.control}
+          persistDraft={persistDraft}
+          onSaving={() => setSaveStatus("saving")}
+          onSuccess={() => {
+            setSaveStatus("saved");
+            setTimeout(() => setSaveStatus("idle"), 3000);
+          }}
+          onError={() => {
+            setSaveStatus("idle");
+            toast.error("Não foi possível salvar o rascunho.");
+          }}
+        />
+      ) : null}
       <div className="space-y-8">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
