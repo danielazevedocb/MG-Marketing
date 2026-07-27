@@ -15,13 +15,11 @@ export function CampaignLanding({ model }: CampaignLandingProps) {
     <div className="min-h-screen w-full">
       {model.logoUrl ? (
         <header className="border-b px-6 py-4">
-          <div className="mx-auto w-full max-w-3xl">
-            <LandingImage
-              src={model.logoUrl}
-              alt={model.titulo}
-              className="h-10 w-auto object-contain"
-            />
-          </div>
+          <LandingImage
+            src={model.logoUrl}
+            alt={model.titulo}
+            className="h-10 w-auto object-contain"
+          />
         </header>
       ) : null}
 
