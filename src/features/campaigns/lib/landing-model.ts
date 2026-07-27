@@ -14,23 +14,18 @@ export type LandingViewModel = {
   titulo: string;
   subtitulo: string | null;
   paragrafos: string[];
-  /// Banner em largura total no topo da página (substituído por
-  /// `videoEmbedUrl` quando presente — ver campaign-landing.tsx).
-  heroUrl: string | null;
   /// Embed seguro (youtube-nocookie.com/embed/{id}) do vídeo do YouTube,
   /// exclusivo da landing pública — nunca aparece em Email/WhatsApp.
   videoEmbedUrl: string | null;
-  /// Imagem exibida na coluna ao lado do texto (null se igual ao hero).
-  lateralUrl: string | null;
-  /// Galeria em grade abaixo do conteúdo (sanitizada, sem duplicar hero/lateral).
-  galeria: string[];
-  /// Imagem usada no card de preview (og:image): hero → lateral → 1ª da galeria.
+  /// Fotos da campanha (banner + imagem + galeria unificados), sanitizadas,
+  /// sem duplicatas, exibidas em grade abaixo do texto/vídeo — layout
+  /// "blog": explicação primeiro, mídia depois.
+  fotos: string[];
+  /// Imagem usada no card de preview (og:image): 1ª foto disponível.
   ogImageUrl: string | null;
   detalhes: LandingDetail[];
   observacoes: string | null;
 };
-
-const MAX_GALLERY_IMAGES = 8;
 
 function formatValidade(iso: string | null): string | null {
   if (!iso?.trim()) return null;
@@ -60,28 +55,21 @@ export function buildLandingViewModel(
     detalhes.push({ label: "Válido até", value: validade });
   }
 
-  const heroUrl = sanitizeUrl(field.banner);
   const videoEmbedUrl = sanitizeYouTubeUrl(field.videoUrl);
-  const imagemSanitizada = sanitizeUrl(field.imagem);
-  const lateralUrl = imagemSanitizada === heroUrl ? null : imagemSanitizada;
 
-  const galeria = (field.imagens ?? [])
+  const fotos = [field.banner, field.imagem, ...(field.imagens ?? [])]
     .map((url) => sanitizeUrl(url))
     .filter((url): url is string => Boolean(url))
-    .filter((url) => url !== heroUrl && url !== lateralUrl)
-    .filter((url, index, list) => list.indexOf(url) === index)
-    .slice(0, MAX_GALLERY_IMAGES);
+    .filter((url, index, list) => list.indexOf(url) === index);
 
   return {
     typeLabel: CAMPAIGN_TYPE_LABELS[type],
     titulo: field.titulo?.trim() || "Campanha MG Marketing",
     subtitulo: field.subtitulo?.trim() || null,
     paragrafos,
-    heroUrl,
     videoEmbedUrl,
-    lateralUrl,
-    galeria,
-    ogImageUrl: heroUrl ?? lateralUrl ?? galeria[0] ?? null,
+    fotos,
+    ogImageUrl: fotos[0] ?? null,
     detalhes,
     observacoes: field.observacoes?.trim() || null,
   };

@@ -21,7 +21,7 @@ const baseField: CampaignFieldDto = {
 };
 
 describe("buildLandingViewModel", () => {
-  it("monta o modelo completo com parágrafos, detalhes e hero", () => {
+  it("monta o modelo completo com parágrafos, detalhes e fotos", () => {
     const model = buildLandingViewModel(CampaignType.Novidade, baseField);
 
     expect(model.typeLabel).toBe("Novidade");
@@ -31,9 +31,7 @@ describe("buildLandingViewModel", () => {
       "Primeiro parágrafo.",
       "Segundo parágrafo.",
     ]);
-    expect(model.heroUrl).toBe("https://cdn.example.com/banner.png");
-    expect(model.lateralUrl).toBeNull();
-    expect(model.galeria).toEqual([]);
+    expect(model.fotos).toEqual(["https://cdn.example.com/banner.png"]);
     expect(model.detalhes).toEqual([
       { label: "Preço", value: "R$ 99,90" },
       { label: "Desconto", value: "10%" },
@@ -45,90 +43,57 @@ describe("buildLandingViewModel", () => {
     expect(model.observacoes).toBe("Válido enquanto durar o estoque.");
   });
 
-  it("banner e imagem juntos viram hero + lateral", () => {
+  it("banner, imagem e galeria viram uma única lista de fotos (nessa ordem)", () => {
     const model = buildLandingViewModel(CampaignType.Geral, {
       ...baseField,
       imagem: "https://cdn.example.com/foto.jpg",
+      imagens: ["https://cdn.example.com/g1.jpg"],
     });
 
-    expect(model.heroUrl).toBe("https://cdn.example.com/banner.png");
-    expect(model.lateralUrl).toBe("https://cdn.example.com/foto.jpg");
+    expect(model.fotos).toEqual([
+      "https://cdn.example.com/banner.png",
+      "https://cdn.example.com/foto.jpg",
+      "https://cdn.example.com/g1.jpg",
+    ]);
   });
 
-  it("campanha só com imagem mantém exibição via lateral", () => {
-    const model = buildLandingViewModel(CampaignType.Geral, {
-      ...baseField,
-      banner: null,
-      imagem: "https://cdn.example.com/foto.jpg",
-    });
-
-    expect(model.heroUrl).toBeNull();
-    expect(model.lateralUrl).toBe("https://cdn.example.com/foto.jpg");
-  });
-
-  it("lateral duplicada do hero é suprimida", () => {
+  it("remove duplicatas entre banner, imagem e galeria", () => {
     const model = buildLandingViewModel(CampaignType.Geral, {
       ...baseField,
       imagem: baseField.banner,
+      imagens: [baseField.banner!, "https://cdn.example.com/g1.jpg"],
     });
 
-    expect(model.heroUrl).toBe("https://cdn.example.com/banner.png");
-    expect(model.lateralUrl).toBeNull();
+    expect(model.fotos).toEqual([
+      "https://cdn.example.com/banner.png",
+      "https://cdn.example.com/g1.jpg",
+    ]);
   });
 
-  it("galeria sanitiza URLs, remove duplicatas de hero/lateral e corta em 8", () => {
-    const validas = Array.from(
-      { length: 10 },
-      (_, i) => `https://cdn.example.com/g${i}.jpg`,
-    );
-    const model = buildLandingViewModel(CampaignType.Geral, {
-      ...baseField,
-      imagem: "https://cdn.example.com/foto.jpg",
-      imagens: [
-        "javascript:alert(1)",
-        baseField.banner!,
-        "https://cdn.example.com/foto.jpg",
-        ...validas,
-        validas[0]!,
-      ],
-    });
-
-    expect(model.galeria).toEqual(validas.slice(0, 8));
-  });
-
-  it("ogImageUrl segue fallback hero → lateral → galeria", () => {
-    const semHero = buildLandingViewModel(CampaignType.Geral, {
-      ...baseField,
-      banner: null,
-      imagem: "https://cdn.example.com/foto.jpg",
-    });
-    expect(semHero.ogImageUrl).toBe("https://cdn.example.com/foto.jpg");
-
-    const soGaleria = buildLandingViewModel(CampaignType.Geral, {
-      ...baseField,
-      banner: null,
-      imagem: null,
-      imagens: ["https://cdn.example.com/g1.jpg"],
-    });
-    expect(soGaleria.ogImageUrl).toBe("https://cdn.example.com/g1.jpg");
-
-    const semImagens = buildLandingViewModel(CampaignType.Geral, {
-      ...baseField,
-      banner: null,
-    });
-    expect(semImagens.ogImageUrl).toBeNull();
-  });
-
-  it("rejeita URLs de imagem não http/https no hero e lateral", () => {
+  it("sanitiza URLs inválidas em banner, imagem e galeria", () => {
     const model = buildLandingViewModel(CampaignType.Geral, {
       ...baseField,
       banner: "javascript:alert(1)",
       imagem: "data:text/html,<script>alert(1)</script>",
+      imagens: ["javascript:alert(2)", "https://cdn.example.com/g1.jpg"],
     });
 
-    expect(model.heroUrl).toBeNull();
-    expect(model.lateralUrl).toBeNull();
-    expect(model.ogImageUrl).toBeNull();
+    expect(model.fotos).toEqual(["https://cdn.example.com/g1.jpg"]);
+  });
+
+  it("ogImageUrl é a primeira foto disponível, ou null sem fotos", () => {
+    const comFotos = buildLandingViewModel(CampaignType.Geral, {
+      ...baseField,
+      banner: null,
+      imagem: "https://cdn.example.com/foto.jpg",
+    });
+    expect(comFotos.ogImageUrl).toBe("https://cdn.example.com/foto.jpg");
+
+    const semFotos = buildLandingViewModel(CampaignType.Geral, {
+      ...baseField,
+      banner: null,
+    });
+    expect(semFotos.ogImageUrl).toBeNull();
   });
 
   it("videoUrl válido do YouTube vira videoEmbedUrl", () => {
@@ -174,9 +139,9 @@ describe("buildLandingViewModel", () => {
     expect(model.subtitulo).toBeNull();
     expect(model.paragrafos).toEqual([]);
     expect(model.detalhes).toEqual([]);
-    expect(model.heroUrl).toBeNull();
-    expect(model.lateralUrl).toBeNull();
-    expect(model.galeria).toEqual([]);
+    expect(model.fotos).toEqual([]);
+    expect(model.ogImageUrl).toBeNull();
+    expect(model.videoEmbedUrl).toBeNull();
   });
 
   it("ignora validade inválida sem lançar erro", () => {
